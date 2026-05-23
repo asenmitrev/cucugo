@@ -3,25 +3,8 @@ extends Node2D
 const W := 800.0
 const H := 450.0
 const GRAV := 900.0
-const JUMP_V := -530.0
-const SPEED := 210.0
 const SW := 90.0
 const SH := 90.0
-
-const PUNCH_DUR := 0.36
-const HIT_T0 := 0.07
-const HIT_T1 := 0.25
-const PUNCH_RX := 118.0
-const PUNCH_RY := 65.0
-
-# Seconds per frame for each state (2x2 sheet = 4 frames)
-const ANIM_SPD := {
-	"idle":  0.18,
-	"walk":  0.10,
-	"jump":  0.14,
-	"punch": 0.09,
-	"dead":  0.20,
-}
 
 # [x, y, w, h]
 const PLATS := [
@@ -30,6 +13,9 @@ const PLATS := [
 	[555.0, 305.0, 165.0, 16.0],
 	[315.0, 220.0, 170.0, 16.0],
 ]
+
+var ASEN_DEF   = preload("res://resources/asen.tres")
+var DJOLEV_DEF = preload("res://resources/djolev.tres")
 
 var pl := [{}, {}]
 var impacts := []
@@ -46,8 +32,8 @@ func _ready() -> void:
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
-	_lbl_p1 = _make_lbl("ASEN", Vector2(18, 8), Color(0.75, 0.55, 1.0))
-	_lbl_p2 = _make_lbl("DJOLEV", Vector2(680, 8), Color(0.55, 1.0, 0.75))
+	_lbl_p1 = _make_lbl(ASEN_DEF.display_name, Vector2(18, 8), ASEN_DEF.label_color)
+	_lbl_p2 = _make_lbl(DJOLEV_DEF.display_name, Vector2(680, 8), DJOLEV_DEF.label_color)
 	_lbl_controls = _make_lbl(
 		"ASEN: A/D  W jump  SPACE punch          DJOLEV: ←/→  ↑ jump  ENTER punch          R: restart",
 		Vector2(8, 432), Color(0.35, 0.35, 0.45))
@@ -66,10 +52,8 @@ func _ready() -> void:
 	for lbl in [_lbl_p1, _lbl_p2, _lbl_controls, _lbl_winner, _lbl_restart]:
 		ui.add_child(lbl)
 
-	_init_player(0, "ASEN",   "asen",   Vector2(140, 300), true,
-		"p1_left", "p1_right", "p1_jump", "p1_punch")
-	_init_player(1, "DJOLEV", "djolev", Vector2(570, 300), false,
-		"p2_left", "p2_right", "p2_jump", "p2_punch")
+	_init_player(0, ASEN_DEF)
+	_init_player(1, DJOLEV_DEF)
 
 
 func _make_lbl(txt: String, pos: Vector2, col: Color) -> Label:
@@ -80,30 +64,38 @@ func _make_lbl(txt: String, pos: Vector2, col: Color) -> Label:
 	return l
 
 
-func _init_player(i: int, pname: String, char_name: String,
-		start: Vector2, facing_r: bool,
-		cl: String, cr: String, cj: String, cp: String) -> void:
+func _init_player(i: int, def: CharacterDef) -> void:
 	var spr := Sprite.new()
 	spr.centered = false
 	spr.hframes = 2
 	spr.vframes = 2
-	spr.scale = Vector2(SW / 128.0, SH / 128.0)  # each frame is 128x128
+	spr.scale = Vector2(SW / 128.0, SH / 128.0)
 	add_child(spr)
 
 	var tex := {}
 	for s in ["idle", "walk", "jump", "punch"]:
-		tex[s] = load("res://assets/%s/%s-%s.png" % [char_name, char_name, s])
+		tex[s] = load("res://assets/%s/%s-%s.png" % [def.char_name, def.char_name, s])
 
 	pl[i] = {
-		"name": pname, "pos": start, "vel": Vector2.ZERO,
-		"right": facing_r, "on_gnd": false,
+		"def": def,
+		"name": def.display_name, "pos": def.start_pos, "vel": Vector2.ZERO,
+		"right": def.facing_right, "on_gnd": false,
 		"state": "idle",
 		"punch_t": 0.0, "punch_hit": false, "last_pe": 0.0,
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
 		"tex": tex, "spr": spr,
-		"cl": cl, "cr": cr, "cj": cj, "cp": cp,
 	}
+
+
+func _anim_spd(def: CharacterDef, state: String) -> float:
+	match state:
+		"idle":  return def.anim_idle
+		"walk":  return def.anim_walk
+		"jump":  return def.anim_jump
+		"punch": return def.anim_punch
+		"dead":  return def.anim_dead
+	return 0.15
 
 
 func _process(delta: float) -> void:
@@ -122,9 +114,9 @@ func _process(delta: float) -> void:
 		if pl[0]["dead"] and pl[1]["dead"]:
 			_end_game("DRAW!")
 		elif pl[0]["dead"]:
-			_end_game("DJOLEV WINS!")
+			_end_game(DJOLEV_DEF.display_name + " WINS!")
 		elif pl[1]["dead"]:
-			_end_game("ASEN WINS!")
+			_end_game(ASEN_DEF.display_name + " WINS!")
 
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
@@ -134,14 +126,13 @@ func _process(delta: float) -> void:
 		spr.position = p["pos"]
 		spr.flip_h = not p["right"]
 
-		# Advance animation frame
 		var cur_state: String = p["state"]
 		if cur_state != p["prev_state"]:
 			p["prev_state"] = cur_state
 			p["anim_t"] = 0.0
 			p["anim_frame"] = 0
 		p["anim_t"] += dt
-		var frame_dur: float = ANIM_SPD.get(cur_state, 0.15)
+		var frame_dur: float = _anim_spd(p["def"], cur_state)
 		if p["anim_t"] >= frame_dur:
 			p["anim_t"] -= frame_dur
 			p["anim_frame"] = (int(p["anim_frame"]) + 1) % 4
@@ -150,7 +141,7 @@ func _process(delta: float) -> void:
 		if p["dead"]:
 			spr.modulate.a = max(0.0, 1.0 - p["death_t"] * 0.75)
 			spr.rotation += 3.0 * PI * dt * min(p["death_t"], 0.8)
-		elif p["state"] == "punch" and p["punch_t"] >= HIT_T0 and p["punch_t"] <= HIT_T1:
+		elif p["state"] == "punch" and p["punch_t"] >= p["def"].hit_t0 and p["punch_t"] <= p["def"].hit_t1:
 			spr.modulate = Color(1.5, 1.3, 0.5, 1.0)
 		else:
 			spr.modulate = Color(1.0, 1.0, 1.0, spr.modulate.a)
@@ -168,6 +159,7 @@ func _process(delta: float) -> void:
 func _update_player(i: int, oi: int, dt: float) -> void:
 	var p: Dictionary = pl[i]
 	var o: Dictionary = pl[oi]
+	var def: CharacterDef = p["def"]
 
 	if p["dead"]:
 		p["vel"].y += GRAV * dt
@@ -180,13 +172,13 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 	if punching:
 		p["punch_t"] += dt
-		if p["punch_t"] >= PUNCH_DUR:
+		if p["punch_t"] >= def.punch_dur:
 			p["state"] = "idle"
 			p["last_pe"] = OS.get_ticks_msec() / 1000.0
 			punching = false
 
 	var now: float = OS.get_ticks_msec() / 1000.0
-	if not punching and Input.is_action_just_pressed(p["cp"]):
+	if not punching and Input.is_action_just_pressed(def.action_punch):
 		if now - p["last_pe"] > 0.15:
 			p["state"] = "punch"
 			p["punch_t"] = 0.0
@@ -195,17 +187,17 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			punching = true
 
 	if not punching:
-		if Input.is_action_pressed(p["cl"]):
-			p["vel"].x = -SPEED
+		if Input.is_action_pressed(def.action_left):
+			p["vel"].x = -def.speed
 			p["right"] = false
-		elif Input.is_action_pressed(p["cr"]):
-			p["vel"].x = SPEED
+		elif Input.is_action_pressed(def.action_right):
+			p["vel"].x = def.speed
 			p["right"] = true
 		else:
 			p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
 
-		if Input.is_action_just_pressed(p["cj"]) and p["on_gnd"]:
-			p["vel"].y = JUMP_V
+		if Input.is_action_just_pressed(def.action_jump) and p["on_gnd"]:
+			p["vel"].y = def.jump_vel
 	else:
 		p["vel"].x = lerp(p["vel"].x, 0.0, 12.0 * dt)
 
@@ -228,7 +220,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["death_t"] = 0.0
 
 	if punching and not p["punch_hit"] and not o["dead"]:
-		if p["punch_t"] >= HIT_T0 and p["punch_t"] <= HIT_T1:
+		if p["punch_t"] >= def.hit_t0 and p["punch_t"] <= def.hit_t1:
 			_punch_check(p, o)
 
 
@@ -249,13 +241,14 @@ func _collide_plats(p: Dictionary) -> void:
 
 
 func _punch_check(a: Dictionary, d: Dictionary) -> void:
+	var adef: CharacterDef = a["def"]
 	var ax: float = a["pos"].x + SW * 0.5
 	var ay: float = a["pos"].y + SH * 0.5
 	var dx: float = d["pos"].x + SW * 0.5
 	var dy: float = d["pos"].y + SH * 0.5
 	var ddx: float = dx - ax
 	var in_front: bool = ddx > 0.0 if a["right"] else ddx < 0.0
-	if in_front and abs(ddx) < PUNCH_RX and abs(dy - ay) < PUNCH_RY:
+	if in_front and abs(ddx) < adef.punch_rx and abs(dy - ay) < adef.punch_ry:
 		a["punch_hit"] = true
 		d["dead"] = true
 		d["death_t"] = 0.0
@@ -274,18 +267,15 @@ func _end_game(text: String) -> void:
 
 
 func _draw() -> void:
-	# Background gradient (approximated with two rects)
 	draw_rect(Rect2(0, 0, W, H), Color(0.07, 0.08, 0.16))
 	draw_rect(Rect2(0, H * 0.6, W, H * 0.4), Color(0.10, 0.12, 0.22))
 
-	# Stars
 	for i in range(28):
 		var sx := fmod(float(i * 137 + 29), 780.0) + 10.0
 		var sy := fmod(float(i * 97 + 13), 185.0) + 8.0
 		var sz := 2.0 if i % 3 == 0 else 1.0
 		draw_rect(Rect2(sx, sy, sz, sz), Color(1, 1, 1, 0.45))
 
-	# Platforms
 	for plat in PLATS:
 		var px: float = plat[0]
 		var py: float = plat[1]
@@ -297,23 +287,20 @@ func _draw() -> void:
 		draw_rect(Rect2(px, py, 3, ph), Color(0.30, 0.22, 0.44))
 		draw_rect(Rect2(px + pw - 3, py, 3, ph), Color(0.30, 0.22, 0.44))
 
-	# Punch hitbox glow
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
 		if p.empty():
 			continue
-		if p["state"] == "punch" and p["punch_t"] >= HIT_T0 and p["punch_t"] <= HIT_T1:
+		if p["state"] == "punch" and p["punch_t"] >= p["def"].hit_t0 and p["punch_t"] <= p["def"].hit_t1:
 			var cx: float = (p["pos"] as Vector2).x + (SW if p["right"] else 0.0)
 			var cy: float = (p["pos"] as Vector2).y + SH * 0.5
 			draw_circle(Vector2(cx, cy), 22.0, Color(1.0, 0.85, 0.1, 0.35))
 
-	# Impact burst
 	for imp in impacts:
 		var a: float = 1.0 - float(imp["age"]) / 0.55
 		var r: float = 10.0 + float(imp["age"]) * 90.0
 		draw_circle(imp["pos"] as Vector2, r, Color(1.0, 0.35, 0.1, a * 0.55))
 		draw_circle(imp["pos"] as Vector2, r * 0.45, Color(1.0, 0.9, 0.3, a * 0.7))
 
-	# Game-over overlay
 	if game_over:
 		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.58))
