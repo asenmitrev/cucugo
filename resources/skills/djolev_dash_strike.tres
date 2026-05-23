@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Dash Strike"
+cast_time = 0.05
+cooldown = 1.2
+anim_cast = 0.07
+effect_width = 180.0
+effect_height = 40.0
+effect_offset_x = 0.0
+effect_offset_y = 25.0
+effect_duration = 0.5
+effect_color = Color( 0.25, 1, 0.75, 1 )

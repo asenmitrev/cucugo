@@ -31,6 +31,6 @@ export var action_skill1: String = ""
 export var action_skill2: String = ""
 export var action_skill3: String = ""
 
-export var skill1: String = ""
-export var skill2: String = ""
-export var skill3: String = ""
+export(Resource) var skill1 = null
+export(Resource) var skill2 = null
+export(Resource) var skill3 = null

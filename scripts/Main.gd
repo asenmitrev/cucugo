@@ -13,11 +13,10 @@ const PLATS := [
 	[315.0, 220.0, 170.0, 16.0],
 ]
 
-const Skills  = preload("res://scripts/Skills.gd")
-const Effects = preload("res://scripts/Effects.gd")
 
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
+
 
 var pl := [{}, {}]
 var impacts := []
@@ -56,6 +55,7 @@ func _ready() -> void:
 
 	_init_player(0, ASEN_DEF)
 	_init_player(1, DJOLEV_DEF)
+
 
 
 func _make_lbl(txt: String, pos: Vector2, col: Color) -> Label:
@@ -139,6 +139,10 @@ func _process(delta: float) -> void:
 			p["anim_frame"] = 0
 		p["anim_t"] += dt
 		var frame_dur: float = _anim_spd(p["def"], cur_state)
+		if p["casting_skill"] >= 0:
+			var csk: Resource = ([p["def"].skill1, p["def"].skill2, p["def"].skill3] as Array)[p["casting_skill"]]
+			if csk != null:
+				frame_dur = csk.anim_cast
 		if p["anim_t"] >= frame_dur:
 			p["anim_t"] -= frame_dur
 			p["anim_frame"] = (int(p["anim_frame"]) + 1) % 4
@@ -198,16 +202,15 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				o["vel"] = Vector2(dir * 380.0, -440.0)
 				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
 				impacts.append({"pos": hit_pos, "age": 0.0})
-		if ae["t"] >= ae["eff"]["duration"]:
+		if ae["t"] >= ae["skill"].effect_duration:
 			p["active_effect"] = null
 
 	# Tick cast timer and activate when ready
 	if p["casting_skill"] >= 0:
 		p["cast_t"] += dt
 		var skill_idx: int = p["casting_skill"]
-		var skill_names: Array = [def.skill1, def.skill2, def.skill3]
-		var sk: Dictionary = Skills.ALL[skill_names[skill_idx]]
-		if p["cast_t"] >= sk["cast_time"]:
+		var sk: Resource = ([def.skill1, def.skill2, def.skill3] as Array)[skill_idx]
+		if p["cast_t"] >= sk.cast_time:
 			_activate_skill(p, skill_idx, sk)
 
 	var punching: bool = p["state"] == "punch"
@@ -231,9 +234,9 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	# Skill inputs: blocked while punching or already casting
 	if not punching and p["casting_skill"] < 0:
 		var skill_actions: Array = [def.action_skill1, def.action_skill2, def.action_skill3]
-		var skill_names2: Array = [def.skill1, def.skill2, def.skill3]
+		var skill_defs: Array = [def.skill1, def.skill2, def.skill3]
 		for k in 3:
-			if skill_names2[k] != "" and skill_actions[k] != "" \
+			if skill_defs[k] != null and skill_actions[k] != "" \
 					and p["skill_cds"][k] <= 0.0 \
 					and Input.is_action_just_pressed(skill_actions[k]):
 				p["casting_skill"] = k
@@ -278,22 +281,21 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			_punch_check(p, o)
 
 
-func _activate_skill(p: Dictionary, skill_idx: int, sk: Dictionary) -> void:
-	var eff: Dictionary = Effects.ALL[sk["effect"]]
+func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:
-		hx = pos.x + eff["offset_x"]
+		hx = pos.x + sk.effect_offset_x
 	else:
-		hx = pos.x + SW - eff["offset_x"] - eff["width"]
-	var hy: float = pos.y + eff["offset_y"]
+		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
+	var hy: float = pos.y + sk.effect_offset_y
 	p["active_effect"] = {
-		"eff":  eff,
-		"t":    0.0,
-		"rect": Rect2(hx, hy, eff["width"], eff["height"]),
-		"hit":  false,
+		"skill": sk,
+		"t":     0.0,
+		"rect":  Rect2(hx, hy, sk.effect_width, sk.effect_height),
+		"hit":   false,
 	}
-	p["skill_cds"][skill_idx] = sk["cooldown"]
+	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
 
@@ -367,9 +369,8 @@ func _draw() -> void:
 		if p.empty() or p["active_effect"] == null:
 			continue
 		var ae: Dictionary = p["active_effect"]
-		var eff: Dictionary = ae["eff"]
-		var col: Color = eff["color"]
-		var fade: float = 1.0 - ae["t"] / eff["duration"]
+		var col: Color = ae["skill"].effect_color
+		var fade: float = 1.0 - ae["t"] / ae["skill"].effect_duration
 		var rect: Rect2 = ae["rect"]
 		draw_rect(rect, Color(col.r, col.g, col.b, 0.35 * fade))
 		draw_rect(rect, Color(col.r, col.g, col.b, fade), false)
@@ -380,9 +381,9 @@ func _draw() -> void:
 		if p.empty() or p["casting_skill"] < 0:
 			continue
 		var skill_idx: int = p["casting_skill"]
-		var sk_names: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
-		var sk: Dictionary = Skills.ALL[sk_names[skill_idx]]
-		var progress: float = min(1.0, p["cast_t"] / sk["cast_time"])
+		var sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
+		var sk: Resource = sk_defs[skill_idx]
+		var progress: float = min(1.0, p["cast_t"] / sk.cast_time)
 		var pos: Vector2 = p["pos"]
 		var bx: float = pos.x + SW * 0.5 - 20.0
 		var by: float = pos.y - 14.0
