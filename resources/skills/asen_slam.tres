@@ -6,11 +6,11 @@
 script = ExtResource( 1 )
 display_name = "Slam"
 cast_time = 0.35
-cooldown = 1.6
-anim_cast = 0.14
-effect_width = 10.0
-effect_height = 150.0
+cooldown = 2.0
+anim_cast = 0.2
+effect_width = 250.0
+effect_height = 5.0
 effect_offset_x = 0.0
-effect_offset_y = 0.0
+effect_offset_y = 64.0
 effect_duration = 1.0
 effect_color = Color( 0.75, 0.3, 1, 1 )
