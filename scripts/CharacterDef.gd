@@ -26,3 +26,11 @@ export var anim_walk: float = 0.10
 export var anim_jump: float = 0.14
 export var anim_punch: float = 0.09
 export var anim_dead: float = 0.20
+
+export var action_skill1: String = ""
+export var action_skill2: String = ""
+export var action_skill3: String = ""
+
+export var skill1: String = ""
+export var skill2: String = ""
+export var skill3: String = ""
