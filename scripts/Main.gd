@@ -23,11 +23,13 @@ const _TEX := {
         "idle":  preload("res://assets/asen/asen-idle.png"),
         "walk":  preload("res://assets/asen/asen-walk.png"),
         "jump":  preload("res://assets/asen/asen-jump.png"),
+        "punch": preload("res://assets/asen/asen-punch.png"),
     },
     "djolev": {
         "idle":  preload("res://assets/djolev/djolev-idle.png"),
         "walk":  preload("res://assets/djolev/djolev-walk.png"),
         "jump":  preload("res://assets/djolev/djolev-jump.png"),
+        "punch": preload("res://assets/djolev/djolev-punch.png"),
     },
 }
 
@@ -467,7 +469,15 @@ func _process(delta: float) -> void:
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
 		var spr: Sprite = p["spr"]
-		var key: String = "idle" if p["dead"] else p["state"]
+		var key: String
+		if p["dead"]:
+			key = "idle"
+		elif p["casting_skill"] >= 0:
+			var _sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
+			var _sk: Resource = _sk_defs[p["casting_skill"]]
+			key = _sk.cast_anim if _sk != null else p["state"]
+		else:
+			key = p["state"]
 		spr.texture = p["tex"].get(key, p["tex"]["idle"])
 		spr.position = p["pos"]
 		spr.flip_h = not p["right"]
@@ -561,6 +571,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 					and Input.is_action_just_pressed(skill_actions[k]):
 				p["casting_skill"] = k
 				p["cast_t"] = 0.0
+				p["anim_t"] = 0.0
+				p["anim_frame"] = 0
 				break
 
 	if Input.is_action_pressed(def.action_left):
@@ -601,11 +613,15 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 	else:
 		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
 	var hy: float = pos.y + sk.effect_offset_y
+	var ae_tex: Texture = null
+	if sk.effect_sprite_path != "":
+		ae_tex = load(sk.effect_sprite_path) as Texture
 	p["active_effects"].append({
 		"skill": sk,
 		"t":     0.0,
 		"rect":  Rect2(hx, hy, sk.effect_width, sk.effect_height),
 		"hit":   false,
+		"tex":   ae_tex,
 	})
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
@@ -665,11 +681,15 @@ func _draw() -> void:
 		if p.empty():
 			continue
 		for ae in p["active_effects"]:
-			var col: Color = ae["skill"].effect_color
-			var fade: float = 1.0 - ae["t"] / ae["skill"].effect_duration
 			var rect: Rect2 = ae["rect"]
-			draw_rect(rect, Color(col.r, col.g, col.b, 0.35 * fade))
-			draw_rect(rect, Color(col.r, col.g, col.b, fade), false)
+			var tex: Texture = ae["tex"]
+			if tex != null:
+				draw_texture_rect(tex, rect, false)
+			else:
+				var col: Color = ae["skill"].effect_color
+				var fade: float = 1.0 - ae["t"] / ae["skill"].effect_duration
+				draw_rect(rect, Color(col.r, col.g, col.b, 0.35 * fade))
+				draw_rect(rect, Color(col.r, col.g, col.b, fade), false)
 
 	# Cast charge bars (above character head)
 	for i in [0, 1]:
