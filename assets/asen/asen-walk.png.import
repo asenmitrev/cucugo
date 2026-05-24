@@ -14,7 +14,7 @@ dest_files=[ "res://.import/asen-walk.png-59be84edfb622e5a3c42ed05fad9766c.stex"
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/lossy_quality=0.7
 compress/hdr_mode=0
 compress/bptc_ldr=0
