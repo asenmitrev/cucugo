@@ -539,8 +539,11 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	var live_effects := []
 	for ae in p["active_effects"]:
 		ae["t"] += dt
+		ae["rect"] = Rect2(ae["rect"].position + Vector2(ae["dx"], ae["dy"]) * dt, ae["rect"].size)
+		ae["rotation"] += ae["rotation_speed"] * dt
 		if not ae["hit"] and not o["dead"]:
-			var o_rect := Rect2(o["pos"], Vector2(SW, SH))
+			var odef: CharacterDef = o["def"]
+			var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
 			var eff_rect: Rect2 = ae["rect"]
 			if eff_rect.intersects(o_rect):
 				ae["hit"] = true
@@ -598,7 +601,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["state"] = "idle"
 
 	_collide_plats(p)
-	p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
+	var _bdef: CharacterDef = p["def"]
+	p["pos"].x = clamp(p["pos"].x, -_bdef.body_offset_x, W - _bdef.body_offset_x - _bdef.body_w)
 
 	if p["pos"].y > H + 100.0:
 		p["dead"] = true
@@ -606,22 +610,28 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 
 func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
+	var def: CharacterDef = p["def"]
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:
 		hx = pos.x + sk.effect_offset_x
 	else:
-		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
+		hx = pos.x + def.body_offset_x + def.body_w - sk.effect_offset_x - sk.effect_width
 	var hy: float = pos.y + sk.effect_offset_y
 	var ae_tex: Texture = null
 	if sk.effect_sprite_path != "":
 		ae_tex = load(sk.effect_sprite_path) as Texture
+	var dir: float = 1.0 if p["right"] else -1.0
 	p["active_effects"].append({
-		"skill": sk,
-		"t":     0.0,
-		"rect":  Rect2(hx, hy, sk.effect_width, sk.effect_height),
-		"hit":   false,
-		"tex":   ae_tex,
+		"skill":          sk,
+		"t":              0.0,
+		"rect":           Rect2(hx, hy, sk.effect_width, sk.effect_height),
+		"hit":            false,
+		"tex":            ae_tex,
+		"dx":             sk.effect_dx * dir,
+		"dy":             sk.effect_dy,
+		"rotation":       0.0,
+		"rotation_speed": deg2rad(sk.effect_rotation_speed),
 	})
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
@@ -634,12 +644,15 @@ func _collide_plats(p: Dictionary) -> void:
 		var px: float = plat[0]
 		var py: float = plat[1]
 		var pw: float = plat[2]
+		var _pd: CharacterDef = p["def"]
+		var _bx: float = p["pos"].x + _pd.body_offset_x
+		var _by: float = p["pos"].y + _pd.body_offset_y
 		if p["vel"].y >= 0.0 \
-				and p["pos"].x + SW > px + 5.0 \
-				and p["pos"].x < px + pw - 5.0 \
-				and p["pos"].y + SH >= py \
-				and p["pos"].y + SH <= py + 30.0:
-			p["pos"].y = py - SH
+				and _bx + _pd.body_w > px + 5.0 \
+				and _bx < px + pw - 5.0 \
+				and _by + _pd.body_h >= py \
+				and _by + _pd.body_h <= py + 30.0:
+			p["pos"].y = py - _pd.body_h - _pd.body_offset_y
 			p["vel"].y = 0.0
 			p["on_gnd"] = true
 
@@ -684,7 +697,10 @@ func _draw() -> void:
 			var rect: Rect2 = ae["rect"]
 			var tex: Texture = ae["tex"]
 			if tex != null:
-				draw_texture_rect(tex, rect, false)
+				var center: Vector2 = rect.position + rect.size * 0.5
+				draw_set_transform(center, ae["rotation"], Vector2.ONE)
+				draw_texture_rect(tex, Rect2(-rect.size * 0.5, rect.size), false)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			else:
 				var col: Color = ae["skill"].effect_color
 				var fade: float = 1.0 - ae["t"] / ae["skill"].effect_duration

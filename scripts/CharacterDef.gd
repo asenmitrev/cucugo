@@ -14,6 +14,12 @@ export var action_jump: String = ""
 export var speed: float = 210.0
 export var jump_vel: float = -530.0
 
+# Body hitbox rect within the 90×90 sprite cell
+export var body_w: float = 90.0
+export var body_h: float = 90.0
+export var body_offset_x: float = 0.0
+export var body_offset_y: float = 0.0
+
 export var anim_idle: float = 0.18
 export var anim_walk: float = 0.10
 export var anim_jump: float = 0.14

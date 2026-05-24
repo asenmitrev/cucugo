@@ -16,3 +16,6 @@ effect_offset_y = 65.0
 effect_duration = 0.8
 effect_color = Color( 0.1, 0.75, 0.9, 1 )
 effect_sprite_path = ""
+effect_dx = 0.0
+effect_dy = 0.0
+effect_rotation_speed = 0.0

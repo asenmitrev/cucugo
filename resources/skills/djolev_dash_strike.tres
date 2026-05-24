@@ -4,15 +4,18 @@
 
 [resource]
 script = ExtResource( 1 )
-display_name = "Dash Strike"
-cast_time = 0.05
-cooldown = 1.2
+display_name = "Scream Forward"
+cast_time = 0.1
+cooldown = 0.5
 anim_cast = 0.07
 cast_anim = "punch"
-effect_width = 180.0
+effect_width = 40.0
 effect_height = 40.0
 effect_offset_x = 0.0
 effect_offset_y = 25.0
-effect_duration = 0.5
-effect_color = Color( 0.25, 1, 0.75, 1 )
-effect_sprite_path = ""
+effect_duration = 0.25
+effect_color = Color( 0.25098, 1, 0.74902, 1 )
+effect_sprite_path = "res://assets/djolev/scream.png"
+effect_dx = 420.0
+effect_dy = 0.0
+effect_rotation_speed = 0.0
