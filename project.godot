@@ -44,6 +44,7 @@ window/size/width=800
 window/size/height=450
 window/size/borderless=true
 window/size/fullscreen=true
+window/size/always_on_top=true
 window/dpi/allow_hidpi=true
 window/vsync/use_vsync=false
 window/stretch/mode="viewport"
@@ -56,6 +57,14 @@ common/drop_mouse_on_gui_input_disabled=true
 
 [input]
 
+ui_accept={
+"deadzone": 0.5,
+"events": [  ]
+}
+ui_select={
+"deadzone": 0.5,
+"events": [  ]
+}
 p1_left={
 "deadzone": 0.5,
 "events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":65,"physical_scancode":0,"unicode":0,"echo":false,"script":null)

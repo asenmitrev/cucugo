@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource( 1 )
-display_name = "Whirl"
+display_name = "Gong"
 cast_time = 0.2
 cooldown = 2.0
 anim_cast = 0.06

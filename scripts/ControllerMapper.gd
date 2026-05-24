@@ -12,7 +12,6 @@ const ACTION_MAP := {
 	"left":  [["p1_left", 0],   ["p2_left", 1]],
 	"right": [["p1_right", 0],  ["p2_right", 1]],
 	"up":    [["p1_jump", 0],   ["p2_jump", 1]],
-	"a":     [["p1_punch", 0],  ["p2_punch", 1]],
 	"b":     [["p1_skill1", 0], ["p2_skill1", 1]],
 	"x":     [["p1_skill2", 0], ["p2_skill2", 1]],
 	"y":     [["p1_skill3", 0], ["p2_skill3", 1]],
