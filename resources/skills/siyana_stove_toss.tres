@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Resource" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Stove Toss"
+cast_time = 0.30
+cooldown = 3.5
+anim_cast = 0.12
+cast_anim = "punch"
+effect_width = 60.0
+effect_height = 50.0
+effect_offset_x = 50.0
+effect_offset_y = 20.0
+effect_duration = 2.5
+effect_color = Color( 1, 0.4, 0.15, 1 )
+effect_sprite_path = ""
+effect_dx = 350.0
+effect_dy = -180.0
+effect_rotation_speed = 0.0
+effect_gravity = 500.0

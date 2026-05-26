@@ -40,6 +40,7 @@ const _TEX := {
         "walk":  preload("res://assets/siyana/siyana-walk.png"),
         "jump":  preload("res://assets/siyana/siyana-jump.png"),
         "punch": preload("res://assets/siyana/siyana-punch.png"),
+        "kick":  preload("res://assets/siyana/siyana-finger.png"),
     },
 }
 
