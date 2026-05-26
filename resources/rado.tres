@@ -1,0 +1,31 @@
+[gd_resource type="Resource" load_steps=5 format=2]
+
+[ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
+[ext_resource path="res://resources/skills/rado_whataboutism.tres" type="Resource" id=2]
+[ext_resource path="res://resources/skills/rado_folder_slap.tres" type="Resource" id=3]
+[ext_resource path="res://resources/skills/rado_boxers_sprint.tres" type="Resource" id=4]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "RADO"
+char_name = "rado"
+label_color = Color( 0.9, 0.4, 0.5, 1 )
+action_left = ""
+action_right = ""
+action_jump = ""
+speed = 220.0
+jump_vel = -520.0
+body_w = 36.0
+body_h = 80.0
+body_offset_x = 22.0
+body_offset_y = 4.0
+anim_idle = 0.18
+anim_walk = 0.1
+anim_jump = 0.14
+anim_dead = 0.2
+action_skill1 = ""
+action_skill2 = ""
+action_skill3 = ""
+skill1 = ExtResource( 2 )
+skill2 = ExtResource( 3 )
+skill3 = ExtResource( 4 )

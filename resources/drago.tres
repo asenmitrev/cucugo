@@ -1,0 +1,31 @@
+[gd_resource type="Resource" load_steps=5 format=2]
+
+[ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
+[ext_resource path="res://resources/skills/drago_drone_strike.tres" type="Resource" id=2]
+[ext_resource path="res://resources/skills/drago_emp_blast.tres" type="Resource" id=3]
+[ext_resource path="res://resources/skills/drago_data_dash.tres" type="Resource" id=4]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "DRAGO"
+char_name = "drago"
+label_color = Color( 0.4, 0.65, 0.9, 1 )
+action_left = ""
+action_right = ""
+action_jump = ""
+speed = 200.0
+jump_vel = -510.0
+body_w = 44.0
+body_h = 84.0
+body_offset_x = 18.0
+body_offset_y = 4.0
+anim_idle = 0.18
+anim_walk = 0.1
+anim_jump = 0.14
+anim_dead = 0.2
+action_skill1 = ""
+action_skill2 = ""
+action_skill3 = ""
+skill1 = ExtResource( 2 )
+skill2 = ExtResource( 3 )
+skill3 = ExtResource( 4 )

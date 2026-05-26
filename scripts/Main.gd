@@ -21,6 +21,10 @@ var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
 var SIYANA_DEF = preload("res://resources/siyana.tres")
 var CRUNCH_DEF = preload("res://resources/crunch.tres")
+var DANI_DEF   = preload("res://resources/dani.tres")
+var DRAGO_DEF  = preload("res://resources/drago.tres")
+var RADO_DEF   = preload("res://resources/rado.tres")
+var YAVOR_DEF  = preload("res://resources/yavor.tres")
 
 # Preload all sprite textures at parse time so _init_player does zero disk I/O.
 const _TEX := {
@@ -52,7 +56,40 @@ const _TEX := {
         "jump":    preload("res://assets/crunch/crunch-punch.png"),
         "punch":   preload("res://assets/crunch/crunch-punch.png"),
         "kick":    preload("res://assets/crunch/crunch-kick.png"),
+        "flykick": preload("res://assets/crunch/crunch-flykick.png"),
         "falling": preload("res://assets/crunch/crunch-falling.png"),
+    },
+    "dani": {
+        "idle":    preload("res://assets/dani/dani-idle.png"),
+        "walk":    preload("res://assets/dani/dani-walk.png"),
+        "jump":    preload("res://assets/dani/dani-jump.png"),
+        "punch":   preload("res://assets/dani/dani-punch.png"),
+        "kick":    preload("res://assets/dani/dani-kick.png"),
+        "falling": preload("res://assets/dani/dani-fall.png"),
+    },
+    "drago": {
+        "idle":    preload("res://assets/drago/drago-idle.png"),
+        "walk":    preload("res://assets/drago/drago-walk.png"),
+        "jump":    preload("res://assets/drago/drago-jump.png"),
+        "punch":   preload("res://assets/drago/drago-punch.png"),
+        "kick":    preload("res://assets/drago/drago-kick.png"),
+        "falling": preload("res://assets/drago/drago-fall.png"),
+    },
+    "rado": {
+        "idle":    preload("res://assets/rado/rado-idle.png"),
+        "walk":    preload("res://assets/rado/rado-walk.png"),
+        "jump":    preload("res://assets/rado/rado-jumping.png"),
+        "punch":   preload("res://assets/rado/rado-punch.png"),
+        "kick":    preload("res://assets/rado/rado-kick.png"),
+        "falling": preload("res://assets/rado/rado-falling.png"),
+    },
+    "yavor": {
+        "idle":    preload("res://assets/yavor/yavor-idle.png"),
+        "walk":    preload("res://assets/yavor/yavor-walk.png"),
+        "jump":    preload("res://assets/yavor/yavor-jump.png"),
+        "punch":   preload("res://assets/yavor/yavor-punch.png"),
+        "kick":    preload("res://assets/yavor/yavor-kick.png"),
+        "falling": preload("res://assets/yavor/yavor-falling.png"),
     },
 }
 
@@ -360,6 +397,7 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 		"vy":             0.0,
 		"rotation":       0.0,
 		"rotation_speed": deg2rad(sk.effect_rotation_speed),
+		"facing":         dir,
 	})
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
@@ -465,7 +503,8 @@ func _draw() -> void:
 			var tex: Texture = ae["tex"]
 			if tex != null:
 				var center: Vector2 = rect.position + rect.size * 0.5
-				draw_set_transform(center, ae["rotation"], Vector2.ONE)
+				var flip: float = ae.get("facing", 1.0)
+				draw_set_transform(center, ae["rotation"], Vector2(flip, 1.0))
 				draw_texture_rect(tex, Rect2(-rect.size * 0.5, rect.size), false)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			else:

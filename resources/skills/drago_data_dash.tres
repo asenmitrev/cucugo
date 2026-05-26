@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Data Dash"
+cast_time = 0.15
+cooldown = 1.2
+anim_cast = 0.07
+cast_anim = "punch"
+effect_width = 55.0
+effect_height = 55.0
+effect_offset_x = 40.0
+effect_offset_y = 18.0
+effect_duration = 0.35
+effect_color = Color( 0.35, 0.55, 0.95, 1 )
+effect_sprite_path = ""
+effect_dx = 500.0
+effect_dy = 0.0
+effect_rotation_speed = 0.0
+effect_gravity = 0.0

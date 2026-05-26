@@ -4,7 +4,7 @@ extends Node
 const W := 800.0
 const H := 450.0
 
-const MAIN_MENU_ITEMS := ["Controls", "Quit"]
+const MAIN_MENU_ITEMS := ["Controls", "Character Select", "Quit"]
 var show_main_menu: bool = false
 var main_menu_sel: int = 0
 
@@ -169,7 +169,21 @@ func _main_menu_confirm() -> void:
 			show_main_menu = false
 			_ctrl_toggle()
 		1:
+			show_main_menu = false
+			_go_to_char_select()
+		2:
 			get_tree().quit()
+
+
+func _go_to_char_select() -> void:
+	locked = false
+	show_controls = false
+	var current: Node = get_tree().current_scene
+	if current:
+		current.queue_free()
+	var cs: Node2D = load("res://scenes/CharSelect.tscn").instance()
+	get_tree().get_root().add_child(cs)
+	get_tree().current_scene = cs
 
 
 func _ctrl_toggle() -> void:
@@ -362,7 +376,7 @@ func draw_overlay(canvas: CanvasItem) -> void:
 
 func _draw_main_menu(canvas: CanvasItem) -> void:
 	var mw: float = 280.0
-	var mh: float = 170.0
+	var mh: float = 195.0
 	var mx: float = (W - mw) / 2.0
 	var my: float = (H - mh) / 2.0
 	canvas.draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.65))

@@ -7,12 +7,20 @@ var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
 var SIYANA_DEF = preload("res://resources/siyana.tres")
 var CRUNCH_DEF = preload("res://resources/crunch.tres")
+var DANI_DEF   = preload("res://resources/dani.tres")
+var DRAGO_DEF  = preload("res://resources/drago.tres")
+var RADO_DEF   = preload("res://resources/rado.tres")
+var YAVOR_DEF  = preload("res://resources/yavor.tres")
 
 const _IDLE_TEX := {
 	"asen":   preload("res://assets/asen/asen-idle.png"),
 	"djolev": preload("res://assets/djolev/djolev-idle.png"),
 	"siyana": preload("res://assets/siyana/siyana-idle.png"),
 	"crunch": preload("res://assets/crunch/crunch-idle.png"),
+	"dani":   preload("res://assets/dani/dani-idle.png"),
+	"drago":  preload("res://assets/drago/drago-idle.png"),
+	"rado":   preload("res://assets/rado/rado-idle.png"),
+	"yavor":  preload("res://assets/yavor/yavor-idle.png"),
 }
 
 var _all_defs: Array = []
@@ -24,7 +32,7 @@ var _font: Font
 func _ready() -> void:
 	OS.window_fullscreen = true
 	MenuManager.locked = false
-	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF]
+	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF]
 	var tmp := Label.new()
 	add_child(tmp)
 	_font = tmp.get_font("font")
