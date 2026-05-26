@@ -34,6 +34,9 @@ const _TEX := {
 }
 
 
+var p1_def = null
+var p2_def = null
+
 var pl := [{}, {}]
 var impacts := []
 var game_over := false
@@ -95,8 +98,10 @@ func _ready() -> void:
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
-	_lbl_p1 = _make_lbl(ASEN_DEF.display_name, Vector2(18, 8), ASEN_DEF.label_color)
-	_lbl_p2 = _make_lbl(DJOLEV_DEF.display_name, Vector2(680, 8), DJOLEV_DEF.label_color)
+	var _p1: CharacterDef = p1_def if p1_def != null else ASEN_DEF
+	var _p2: CharacterDef = p2_def if p2_def != null else DJOLEV_DEF
+	_lbl_p1 = _make_lbl(_p1.display_name, Vector2(18, 8), _p1.label_color)
+	_lbl_p2 = _make_lbl(_p2.display_name, Vector2(680, 8), _p2.label_color)
 	_lbl_controls = _make_lbl(
 		"ASEN: A/D move  W jump  R/F/V skills        DJOLEV: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu",
 		Vector2(8, 432), Color(0.35, 0.35, 0.45))
@@ -136,8 +141,8 @@ func _ready() -> void:
 	_setup_default_controls()
 	_ctrl_load()
 
-	_init_player(0, ASEN_DEF)
-	_init_player(1, DJOLEV_DEF)
+	_init_player(0, _p1)
+	_init_player(1, _p2)
 
 
 
@@ -313,6 +318,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 
 	var tex: Dictionary = _TEX[def.char_name]
 
+	var slot: String = "p1" if i == 0 else "p2"
 	pl[i] = {
 		"def": def,
 		"name": def.display_name, "pos": def.start_pos, "vel": Vector2.ZERO,
@@ -325,6 +331,12 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"casting_skill":  -1,
 		"cast_t":          0.0,
 		"active_effects": [],
+		"action_left":   slot + "_left",
+		"action_right":  slot + "_right",
+		"action_jump":   slot + "_jump",
+		"action_skill1": slot + "_skill1",
+		"action_skill2": slot + "_skill2",
+		"action_skill3": slot + "_skill3",
 	}
 
 
@@ -447,7 +459,7 @@ func _process(delta: float) -> void:
 		restart_t += dt
 		_lbl_restart.text = "Restarting in %d..." % int(ceil(RESTART_DELAY - restart_t))
 		if restart_t >= RESTART_DELAY:
-			get_tree().reload_current_scene()
+			get_tree().change_scene("res://scenes/CharSelect.tscn")
 		update()
 		return
 
@@ -462,9 +474,9 @@ func _process(delta: float) -> void:
 		if pl[0]["dead"] and pl[1]["dead"]:
 			_end_game("DRAW!")
 		elif pl[0]["dead"]:
-			_end_game(DJOLEV_DEF.display_name + " WINS!")
+			_end_game(pl[1]["def"].display_name + " WINS!")
 		elif pl[1]["dead"]:
-			_end_game(ASEN_DEF.display_name + " WINS!")
+			_end_game(pl[0]["def"].display_name + " WINS!")
 
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
@@ -566,7 +578,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			_activate_skill(p, skill_idx, sk)
 
 	if p["casting_skill"] < 0:
-		var skill_actions: Array = [def.action_skill1, def.action_skill2, def.action_skill3]
+		var skill_actions: Array = [p["action_skill1"], p["action_skill2"], p["action_skill3"]]
 		var skill_defs: Array = [def.skill1, def.skill2, def.skill3]
 		for k in 3:
 			if skill_defs[k] != null and skill_actions[k] != "" \
@@ -578,16 +590,16 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				p["anim_frame"] = 0
 				break
 
-	if Input.is_action_pressed(def.action_left):
+	if Input.is_action_pressed(p["action_left"]):
 		p["vel"].x = -def.speed
 		p["right"] = false
-	elif Input.is_action_pressed(def.action_right):
+	elif Input.is_action_pressed(p["action_right"]):
 		p["vel"].x = def.speed
 		p["right"] = true
 	else:
 		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
 
-	if Input.is_action_just_pressed(def.action_jump) and p["on_gnd"]:
+	if Input.is_action_just_pressed(p["action_jump"]) and p["on_gnd"]:
 		p["vel"].y = def.jump_vel
 
 	p["vel"].y += GRAV * dt
