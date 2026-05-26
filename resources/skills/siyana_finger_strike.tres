@@ -1,11 +1,11 @@
 [gd_resource type="Resource" load_steps=2 format=2]
 
-[ext_resource path="res://scripts/SkillDef.gd" type="Resource" id=1]
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
 
 [resource]
 script = ExtResource( 1 )
 display_name = "Finger Strike"
-cast_time = 0.12
+cast_time = 0.24
 cooldown = 1.5
 anim_cast = 0.08
 cast_anim = "kick"
@@ -13,9 +13,9 @@ effect_width = 50.0
 effect_height = 50.0
 effect_offset_x = 55.0
 effect_offset_y = 15.0
-effect_duration = 0.30
+effect_duration = 0.3
 effect_color = Color( 1, 0.55, 0.7, 1 )
-effect_sprite_path = ""
+effect_sprite_path = "res://assets/siyana/finger.png"
 effect_dx = 0.0
 effect_dy = 0.0
 effect_rotation_speed = 0.0

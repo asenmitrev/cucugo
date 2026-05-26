@@ -424,8 +424,7 @@ func _draw() -> void:
 			if tex != null:
 				var center: Vector2 = rect.position + rect.size * 0.5
 				draw_set_transform(center, ae["rotation"], Vector2.ONE)
-				var src_rect: Rect2 = Rect2(0, 0, 128, 128)
-				draw_texture_rect_region(tex, Rect2(-rect.size * 0.5, rect.size), src_rect)
+				draw_texture_rect(tex, Rect2(-rect.size * 0.5, rect.size), false)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			else:
 				var col: Color = ae["skill"].effect_color
