@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Beer Toss"
+cast_time = 0.25
+cooldown = 1.5
+anim_cast = 0.1
+cast_anim = "punch"
+effect_width = 30.0
+effect_height = 35.0
+effect_offset_x = 55.0
+effect_offset_y = 25.0
+effect_duration = 1.5
+effect_color = Color( 1, 0.85, 0.2, 1 )
+effect_sprite_path = ""
+effect_dx = 300.0
+effect_dy = -300.0
+effect_rotation_speed = 270.0
+effect_gravity = 600.0

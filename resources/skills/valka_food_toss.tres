@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Food Toss"
+cast_time = 0.2
+cooldown = 1.2
+anim_cast = 0.09
+cast_anim = "punch"
+effect_width = 35.0
+effect_height = 35.0
+effect_offset_x = 55.0
+effect_offset_y = 25.0
+effect_duration = 1.2
+effect_color = Color( 1, 0.6, 0.2, 1 )
+effect_sprite_path = ""
+effect_dx = 320.0
+effect_dy = -320.0
+effect_rotation_speed = 200.0
+effect_gravity = 650.0

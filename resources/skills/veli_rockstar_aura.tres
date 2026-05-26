@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Rockstar Aura"
+cast_time = 0.5
+cooldown = 3.5
+anim_cast = 0.12
+cast_anim = "kick"
+effect_width = 110.0
+effect_height = 110.0
+effect_offset_x = 35.0
+effect_offset_y = 0.0
+effect_duration = 1.0
+effect_color = Color( 0.4, 0.1, 0.9, 1 )
+effect_sprite_path = ""
+effect_dx = 0.0
+effect_dy = 0.0
+effect_rotation_speed = 720.0
+effect_gravity = 0.0

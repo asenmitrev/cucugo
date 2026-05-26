@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "High Noon"
+cast_time = 0.5
+cooldown = 3.5
+anim_cast = 0.12
+cast_anim = "punch"
+effect_width = 120.0
+effect_height = 80.0
+effect_offset_x = 40.0
+effect_offset_y = 10.0
+effect_duration = 0.5
+effect_color = Color( 1, 0.9, 0.3, 1 )
+effect_sprite_path = ""
+effect_dx = 0.0
+effect_dy = 0.0
+effect_rotation_speed = 0.0
+effect_gravity = 0.0

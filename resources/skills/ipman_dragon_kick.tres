@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Dragon Kick"
+cast_time = 0.3
+cooldown = 2.0
+anim_cast = 0.1
+cast_anim = "kick"
+effect_width = 60.0
+effect_height = 50.0
+effect_offset_x = 50.0
+effect_offset_y = 20.0
+effect_duration = 0.5
+effect_color = Color( 0.2, 0.7, 0.3, 1 )
+effect_sprite_path = ""
+effect_dx = 350.0
+effect_dy = -150.0
+effect_rotation_speed = 360.0
+effect_gravity = 0.0

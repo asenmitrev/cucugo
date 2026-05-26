@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Last Call"
+cast_time = 0.4
+cooldown = 3.0
+anim_cast = 0.12
+cast_anim = "kick"
+effect_width = 90.0
+effect_height = 90.0
+effect_offset_x = 40.0
+effect_offset_y = 5.0
+effect_duration = 1.0
+effect_color = Color( 1, 0.5, 0.1, 1 )
+effect_sprite_path = ""
+effect_dx = 0.0
+effect_dy = 0.0
+effect_rotation_speed = 540.0
+effect_gravity = 0.0

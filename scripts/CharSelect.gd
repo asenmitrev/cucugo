@@ -11,6 +11,13 @@ var DANI_DEF   = preload("res://resources/dani.tres")
 var DRAGO_DEF  = preload("res://resources/drago.tres")
 var RADO_DEF   = preload("res://resources/rado.tres")
 var YAVOR_DEF  = preload("res://resources/yavor.tres")
+var FIVEQ_DEF  = preload("res://resources/5q.tres")
+var BOBE_DEF   = preload("res://resources/bobe.tres")
+var IPMAN_DEF  = preload("res://resources/ipman.tres")
+var ITSO_DEF   = preload("res://resources/itso.tres")
+var SASHO_DEF  = preload("res://resources/sasho.tres")
+var VALKA_DEF  = preload("res://resources/valka.tres")
+var VELI_DEF   = preload("res://resources/veli.tres")
 
 const _IDLE_TEX := {
 	"asen":   preload("res://assets/asen/asen-idle.png"),
@@ -21,6 +28,13 @@ const _IDLE_TEX := {
 	"drago":  preload("res://assets/drago/drago-idle.png"),
 	"rado":   preload("res://assets/rado/rado-idle.png"),
 	"yavor":  preload("res://assets/yavor/yavor-idle.png"),
+	"5q":    preload("res://assets/5q/5q-idle.png"),
+	"bobe":   preload("res://assets/bobe/bobe-idle.png"),
+	"ipman":  preload("res://assets/ipman/ipman-idle.png"),
+	"itso":   preload("res://assets/itso/itso-idle.png"),
+	"sasho":  preload("res://assets/sasho/sasho-idle.png"),
+	"valka":  preload("res://assets/valka/valka-idle.png"),
+	"veli":   preload("res://assets/veli/veli-walk.png"),
 }
 
 var _all_defs: Array = []
@@ -32,7 +46,7 @@ var _font: Font
 func _ready() -> void:
 	OS.window_fullscreen = true
 	MenuManager.locked = false
-	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF]
+	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF, FIVEQ_DEF, BOBE_DEF, IPMAN_DEF, ITSO_DEF, SASHO_DEF, VALKA_DEF, VELI_DEF]
 	var tmp := Label.new()
 	add_child(tmp)
 	_font = tmp.get_font("font")
