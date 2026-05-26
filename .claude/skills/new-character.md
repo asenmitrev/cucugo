@@ -7,7 +7,7 @@ This skill explains how to add a new playable character to cuckcuckgo — a two-
 Characters are defined by **three things**:
 1. **Sprite sheets** — 2×2 PNG atlases for each animation state
 2. **A `CharacterDef` resource** (`.tres`) — all stats, hitbox, colors, and skill assignments
-3. **Optional `SkillDef` resources** — up to 3 projectile/area-of-effect skills
+3. **Three `SkillDef` resources** — projectile/area-of-effect skills (invent 3 random thematic skills unless the user provides specifics)
 
 The game loop is a single `Main.gd` script. The character-select screen is `CharSelect.gd`. Both must be updated — no scene nodes per character, everything is data-driven.
 
@@ -34,9 +34,28 @@ assets/<char_name>/
 
 ---
 
-## Step 2 — Skill Resources (Optional)
+## Step 2 — Skill Resources
 
 Skills live in `resources/skills/`. Each is a `SkillDef` resource (see `scripts/SkillDef.gd`).
+
+### Default behavior: 3 random skills
+
+**Unless the user explicitly provides skill details** (projectile description, asset paths, and an explanation for each skill), you **must invent 3 random skills** for the new character. Make them thematic to the character's personality, name, or visual design. For each skill:
+
+1. **Create a `.tres` file** in `resources/skills/` named `<charname>_<skill_name>.tres`
+2. **Choose a skill type** from the patterns below (mix and match — e.g. one projectile, one AoE, one gravity drop)
+3. **Pick fitting stats** — vary cast_time, cooldown, and effect properties so skills feel distinct
+4. **Provide an effect sprite** in `assets/<char_name>/` (or leave `effect_sprite_path = ""` to use the colored-rect fallback)
+
+### Skill patterns to draw from
+
+| Pattern | effect_dx/dy | effect_gravity | effect_rotation_speed | Example |
+|---|---|---|---|---|
+| **Straight projectile** | dx ≠ 0, dy = 0 | 0.0 | any (spin effect) | asen_quick_slash (shuriken) |
+| **Arc projectile** | dx ≠ 0, dy < 0 | 600–900 | 0–180 | crunch_cupcake_toss |
+| **Dropped bomb** | dx = 0, dy = 0 | 900.0 | 0.0 | siyana_stove_toss |
+| **AoE burst** | dx = 0, dy = 0 | 0.0 | high (360+) | djolev_shockwave |
+| **Charge/dash** | large dx, short duration | 0.0 | 0.0 | djolev_dash_strike |
 
 ### SkillDef fields
 
@@ -132,8 +151,6 @@ script = ExtResource( 1 )
 display_name = "NAME"              # Shown in HUD
 char_name = "<name>"               # Matches sprite folder and _TEX key
 label_color = Color( 1, 1, 1, 1 )  # HUD name color
-start_pos = Vector2( 0, 0 )        # Ignored — Main.gd uses P1_START/P2_START
-facing_right = true                # Initial facing direction
 action_left = ""                   # Auto-assigned to pX_left if empty
 action_right = ""                  # Auto-assigned to pX_right if empty
 action_jump = ""                   # Auto-assigned to pX_jump if empty
@@ -179,11 +196,13 @@ Two edits in `scripts/Main.gd`:
 
 ### 4a. Add preload const
 
-Near the top (after `DJOLEV_DEF`):
+Near the top (after `CRUNCH_DEF`):
 
 ```gdscript
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
+var SIYANA_DEF = preload("res://resources/siyana.tres")
+var CRUNCH_DEF = preload("res://resources/crunch.tres")
 var NEWCHAR_DEF = preload("res://resources/newchar.tres")  # ADD THIS
 ```
 
@@ -195,8 +214,10 @@ Add a new entry to the `_TEX` dictionary (the key must match `char_name` from th
 
 ```gdscript
 const _TEX := {
-    "asen": { ... },
+    "asen":   { ... },
     "djolev": { ... },
+    "siyana": { ... },
+    "crunch": { ... },
     "newchar": {                                        # ADD THIS BLOCK
         "idle":    preload("res://assets/newchar/newchar-idle.png"),
         "walk":    preload("res://assets/newchar/newchar-walk.png"),
@@ -219,6 +240,8 @@ The character-select screen maintains its own independent copies of character da
 ```gdscript
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
+var SIYANA_DEF = preload("res://resources/siyana.tres")
+var CRUNCH_DEF = preload("res://resources/crunch.tres")
 var NEWCHAR_DEF = preload("res://resources/newchar.tres")  # ADD THIS
 ```
 
@@ -227,13 +250,15 @@ var NEWCHAR_DEF = preload("res://resources/newchar.tres")  # ADD THIS
 const _IDLE_TEX := {
     "asen":   preload("res://assets/asen/asen-idle.png"),
     "djolev": preload("res://assets/djolev/djolev-idle.png"),
+    "siyana": preload("res://assets/siyana/siyana-idle.png"),
+    "crunch": preload("res://assets/crunch/crunch-idle.png"),
     "newchar": preload("res://assets/newchar/newchar-idle.png"),  # ADD THIS
 }
 ```
 
 **iii. Character list** (in `_all_defs` array inside `_ready()`):
 ```gdscript
-_all_defs = [ASEN_DEF, DJOLEV_DEF, NEWCHAR_DEF]
+_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, NEWCHAR_DEF]
 ```
 
 > Without all three edits, the character will either crash on the select screen or be unselectable.
@@ -259,8 +284,8 @@ func _ready() -> void:
 
 | Step | File / Location | Action |
 |---|---|---|
-| 1 | `assets/<name>/` | Drop 5 sprite sheets (`-idle`, `-walk`, `-jump`, `-punch`, `-falling`) |
-| 2 | `resources/skills/` | Create `.tres` skill files (0–3, optional) |
+| 1 | `assets/<name>/` | Drop 5 sprite sheets (`-idle`, `-walk`, `-jump`, `-punch`, `-falling`) + effect sprites for each skill |
+| 2 | `resources/skills/` | Create 3 `.tres` skill files (invent 3 random thematic skills unless user provides specifics) |
 | 3 | `resources/<name>.tres` | Create CharacterDef with all stats |
 | 4a | `scripts/Main.gd` (top) | Add `var NAME_DEF = preload(...)` |
 | 4b | `scripts/Main.gd` (`_TEX`) | Add texture entry keyed by `char_name` |

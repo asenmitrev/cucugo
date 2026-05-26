@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource( 1 )
-display_name = "Uppercut"
+display_name = "Scream Up"
 cast_time = 0.25
 cooldown = 1.0
 anim_cast = 0.1
