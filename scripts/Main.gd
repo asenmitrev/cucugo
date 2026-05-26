@@ -20,27 +20,39 @@ const PLATS := [
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
 var SIYANA_DEF = preload("res://resources/siyana.tres")
+var CRUNCH_DEF = preload("res://resources/crunch.tres")
 
 # Preload all sprite textures at parse time so _init_player does zero disk I/O.
 const _TEX := {
     "asen": {
-        "idle":  preload("res://assets/asen/asen-idle.png"),
-        "walk":  preload("res://assets/asen/asen-walk.png"),
-        "jump":  preload("res://assets/asen/asen-jump.png"),
-        "punch": preload("res://assets/asen/asen-punch.png"),
+        "idle":    preload("res://assets/asen/asen-idle.png"),
+        "walk":    preload("res://assets/asen/asen-walk.png"),
+        "jump":    preload("res://assets/asen/asen-jump.png"),
+        "punch":   preload("res://assets/asen/asen-punch.png"),
+        "falling": preload("res://assets/asen/asen-falling.png"),
     },
     "djolev": {
-        "idle":  preload("res://assets/djolev/djolev-idle.png"),
-        "walk":  preload("res://assets/djolev/djolev-walk.png"),
-        "jump":  preload("res://assets/djolev/djolev-jump.png"),
-        "punch": preload("res://assets/djolev/djolev-punch.png"),
+        "idle":    preload("res://assets/djolev/djolev-idle.png"),
+        "walk":    preload("res://assets/djolev/djolev-walk.png"),
+        "jump":    preload("res://assets/djolev/djolev-jump.png"),
+        "punch":   preload("res://assets/djolev/djolev-punch.png"),
+        "falling": preload("res://assets/djolev/djolev-falling.png"),
     },
     "siyana": {
-        "idle":  preload("res://assets/siyana/siyana-idle.png"),
-        "walk":  preload("res://assets/siyana/siyana-walk.png"),
-        "jump":  preload("res://assets/siyana/siyana-jump.png"),
-        "punch": preload("res://assets/siyana/siyana-punch.png"),
-        "kick":  preload("res://assets/siyana/siyana-finger.png"),
+        "idle":    preload("res://assets/siyana/siyana-idle.png"),
+        "walk":    preload("res://assets/siyana/siyana-walk.png"),
+        "jump":    preload("res://assets/siyana/siyana-jump.png"),
+        "punch":   preload("res://assets/siyana/siyana-punch.png"),
+        "kick":    preload("res://assets/siyana/siyana-finger.png"),
+        "falling": preload("res://assets/siyana/siyana-falling.png"),
+    },
+    "crunch": {
+        "idle":    preload("res://assets/crunch/crunch-idle.png"),
+        "walk":    preload("res://assets/crunch/crunch-walk.png"),
+        "jump":    preload("res://assets/crunch/crunch-punch.png"),
+        "punch":   preload("res://assets/crunch/crunch-punch.png"),
+        "kick":    preload("res://assets/crunch/crunch-kick.png"),
+        "falling": preload("res://assets/crunch/crunch-falling.png"),
     },
 }
 
@@ -150,7 +162,7 @@ func _process(delta: float) -> void:
 		restart_t += dt
 		_lbl_restart.text = "Restarting in %d..." % int(ceil(RESTART_DELAY - restart_t))
 		if restart_t >= RESTART_DELAY:
-			get_tree().change_scene("res://scenes/CharSelect.tscn")
+			_restart_round()
 		update()
 		return
 
@@ -174,7 +186,7 @@ func _process(delta: float) -> void:
 		var spr: Sprite = p["spr"]
 		var key: String
 		if p["dead"]:
-			key = "idle"
+			key = "falling"
 		elif p["casting_skill"] >= 0:
 			var _sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
 			var _sk: Resource = _sk_defs[p["casting_skill"]]
@@ -192,13 +204,18 @@ func _process(delta: float) -> void:
 			p["anim_frame"] = 0
 		p["anim_t"] += dt
 		var frame_dur: float = _anim_spd(p["def"], cur_state)
+		if p["dead"]:
+			frame_dur = p["def"].anim_dead
 		if p["casting_skill"] >= 0:
 			var csk: Resource = ([p["def"].skill1, p["def"].skill2, p["def"].skill3] as Array)[p["casting_skill"]]
 			if csk != null:
 				frame_dur = csk.anim_cast
 		if p["anim_t"] >= frame_dur:
 			p["anim_t"] -= frame_dur
-			p["anim_frame"] = (int(p["anim_frame"]) + 1) % 4
+			if p["dead"]:
+				p["anim_frame"] = min(int(p["anim_frame"]) + 1, 3)
+			else:
+				p["anim_frame"] = (int(p["anim_frame"]) + 1) % 4
 		spr.frame = int(p["anim_frame"])
 
 		if p["dead"]:
@@ -255,6 +272,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				ae["hit"] = true
 				o["dead"] = true
 				o["death_t"] = 0.0
+				o["anim_frame"] = 0
+				o["anim_t"] = 0.0
 				var dir: float = 1.0 if p["right"] else -1.0
 				o["vel"] = Vector2(dir * 380.0, -440.0)
 				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
@@ -313,6 +332,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	if p["pos"].y > H + 100.0:
 		p["dead"] = true
 		p["death_t"] = 0.0
+		p["anim_frame"] = 0
+		p["anim_t"] = 0.0
 
 
 func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
@@ -322,7 +343,7 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 	if p["right"]:
 		hx = pos.x + sk.effect_offset_x
 	else:
-		hx = pos.x + def.body_offset_x + def.body_w - sk.effect_offset_x - sk.effect_width
+		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
 	var hy: float = pos.y + sk.effect_offset_y
 	var ae_tex: Texture = null
 	if sk.effect_sprite_path != "":
@@ -390,6 +411,27 @@ func _end_game(text: String) -> void:
 	_lbl_winner.text = text
 	_lbl_winner.visible = true
 	_lbl_restart.visible = true
+
+
+func _restart_round() -> void:
+	# Remove old sprites
+	for i in [0, 1]:
+		if pl[i].has("spr"):
+			var spr: Sprite = pl[i]["spr"]
+			if spr != null and spr.is_inside_tree():
+				spr.queue_free()
+	# Reset state
+	game_over = false
+	restart_t = 0.0
+	impacts = []
+	MenuManager.locked = false
+	_lbl_winner.visible = false
+	_lbl_restart.visible = false
+	# Re-init players with their current defs
+	var _p1_def: CharacterDef = pl[0]["def"] if pl[0].has("def") and pl[0]["def"] != null else ASEN_DEF
+	var _p2_def: CharacterDef = pl[1]["def"] if pl[1].has("def") and pl[1]["def"] != null else DJOLEV_DEF
+	_init_player(0, _p1_def)
+	_init_player(1, _p2_def)
 
 
 func _draw() -> void:

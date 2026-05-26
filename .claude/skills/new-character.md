@@ -9,26 +9,28 @@ Characters are defined by **three things**:
 2. **A `CharacterDef` resource** (`.tres`) — all stats, hitbox, colors, and skill assignments
 3. **Optional `SkillDef` resources** — up to 3 projectile/area-of-effect skills
 
-The game loop is a single `Main.gd` script. No scene nodes per character — everything is data-driven.
+The game loop is a single `Main.gd` script. The character-select screen is `CharSelect.gd`. Both must be updated — no scene nodes per character, everything is data-driven.
 
 ---
 
 ## Step 1 — Sprite Sheets
 
-Drop four 2×2 PNG sprite sheets into `assets/<char_name>/`:
+Drop five 2×2 PNG sprite sheets into `assets/<char_name>/`:
 
 ```
 assets/<char_name>/
-  <name>-idle.png    # standing still (frame 0 = center, frame 1 = variant)
-  <name>-walk.png    # walking cycle
-  <name>-jump.png    # jumping pose
-  <name>-punch.png   # casting/punch pose (used during skill cast_time)
+  <name>-idle.png     # standing still (frame 0 = center, frame 1 = variant)
+  <name>-walk.png     # walking cycle
+  <name>-jump.png     # jumping pose
+  <name>-punch.png    # casting/punch pose (used during skill cast_time)
+  <name>-falling.png  # death/falling animation (played when character is killed)
 ```
 
 **Rules:**
 - Each frame is **128×128 px** (scaled to 90×90 at runtime)
 - 2 columns × 2 rows = 4 frames per sheet
 - Frames cycle left-to-right, top-to-bottom
+- The `-falling.png` sheet is **required** — it replaces the idle animation when the character dies
 
 ---
 
@@ -196,26 +198,50 @@ const _TEX := {
     "asen": { ... },
     "djolev": { ... },
     "newchar": {                                        # ADD THIS BLOCK
-        "idle":  preload("res://assets/newchar/newchar-idle.png"),
-        "walk":  preload("res://assets/newchar/newchar-walk.png"),
-        "jump":  preload("res://assets/newchar/newchar-jump.png"),
-        "punch": preload("res://assets/newchar/newchar-punch.png"),
+        "idle":    preload("res://assets/newchar/newchar-idle.png"),
+        "walk":    preload("res://assets/newchar/newchar-walk.png"),
+        "jump":    preload("res://assets/newchar/newchar-jump.png"),
+        "punch":   preload("res://assets/newchar/newchar-punch.png"),
+        "falling": preload("res://assets/newchar/newchar-falling.png"),
     },
 }
 ```
 
-### 4c. Use the character
+**No jump sprite?** Map the `"jump"` key to any other sheet (e.g. `preload("res://assets/newchar/newchar-punch.png")`). The game uses whatever texture is at that key when the character is airborne.
 
-The character can be played two ways:
+**Extra animation keys** (e.g. `"kick"`, `"special"`) are supported. Add them to the `_TEX` dict and reference them via `cast_anim` in SkillDef resources. Siyana and Crunch both use `"kick"` this way.
 
-**Option A — CharSelect scene** (recommended)  
-Set `p1_def` or `p2_def` before `Main.tscn` loads, and `_ready()` picks it up:
+### 4c. Register in CharSelect (`scripts/CharSelect.gd`)
 
+The character-select screen maintains its own independent copies of character data. Add the new character to **all three** locations:
+
+**i. Preload const** (near top, alongside other `*_DEF` vars):
 ```gdscript
-# In CharSelect.gd or similar:
-get_tree().get_root().get_node("Main").p1_def = NEWCHAR_DEF
-get_tree().change_scene("res://scenes/Main.tscn")
+var ASEN_DEF   = preload("res://resources/asen.tres")
+var DJOLEV_DEF = preload("res://resources/djolev.tres")
+var NEWCHAR_DEF = preload("res://resources/newchar.tres")  # ADD THIS
 ```
+
+**ii. Idle texture for portrait** (in `_IDLE_TEX` dict):
+```gdscript
+const _IDLE_TEX := {
+    "asen":   preload("res://assets/asen/asen-idle.png"),
+    "djolev": preload("res://assets/djolev/djolev-idle.png"),
+    "newchar": preload("res://assets/newchar/newchar-idle.png"),  # ADD THIS
+}
+```
+
+**iii. Character list** (in `_all_defs` array inside `_ready()`):
+```gdscript
+_all_defs = [ASEN_DEF, DJOLEV_DEF, NEWCHAR_DEF]
+```
+
+> Without all three edits, the character will either crash on the select screen or be unselectable.
+
+### 4d. Use the character in-game
+
+**Option A — via CharSelect** (recommended)  
+Once registered in Step 4c, the character is selectable. CharSelect passes the chosen def to `Main.gd` automatically.
 
 **Option B — Hardcode in `_ready()`**  
 Replace the default in `Main._ready()`:
@@ -233,12 +259,14 @@ func _ready() -> void:
 
 | Step | File / Location | Action |
 |---|---|---|
-| 1 | `assets/<name>/` | Drop 4 sprite sheets (`-idle`, `-walk`, `-jump`, `-punch`) |
+| 1 | `assets/<name>/` | Drop 5 sprite sheets (`-idle`, `-walk`, `-jump`, `-punch`, `-falling`) |
 | 2 | `resources/skills/` | Create `.tres` skill files (0–3, optional) |
 | 3 | `resources/<name>.tres` | Create CharacterDef with all stats |
 | 4a | `scripts/Main.gd` (top) | Add `var NAME_DEF = preload(...)` |
 | 4b | `scripts/Main.gd` (`_TEX`) | Add texture entry keyed by `char_name` |
-| 4c | `scripts/Main.gd` or CharSelect | Pass `NAME_DEF` to `_init_player()` |
+| 4c-i | `scripts/CharSelect.gd` (top) | Add `var NAME_DEF = preload(...)` |
+| 4c-ii | `scripts/CharSelect.gd` (`_IDLE_TEX`) | Add idle texture for portrait |
+| 4c-iii | `scripts/CharSelect.gd` (`_all_defs`) | Add `NAME_DEF` to array |
 
 ## Godot 3 GDScript Rules (critical)
 

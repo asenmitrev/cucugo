@@ -1,0 +1,22 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Pigeon Throw"
+cast_time = 0.25
+cooldown = 1.5
+anim_cast = 0.1
+cast_anim = "kick"
+effect_width = 50.0
+effect_height = 50.0
+effect_offset_x = 55.0
+effect_offset_y = 15.0
+effect_duration = 3.0
+effect_color = Color( 0.8, 0.85, 0.95, 1 )
+effect_sprite_path = "res://assets/crunch/pigeon.png"
+effect_dx = 450.0
+effect_dy = -450.0
+effect_rotation_speed = 0.0
+effect_gravity = 0.0
