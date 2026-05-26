@@ -4,9 +4,6 @@ class_name CharacterDef
 export var display_name: String = ""
 export var char_name: String = ""
 export var label_color: Color = Color.white
-export var start_pos: Vector2 = Vector2.ZERO
-export var facing_right: bool = true
-
 export var action_left: String = ""
 export var action_right: String = ""
 export var action_jump: String = ""

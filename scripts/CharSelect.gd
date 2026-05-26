@@ -19,6 +19,7 @@ var _font: Font
 
 func _ready() -> void:
 	OS.window_fullscreen = true
+	MenuManager.locked = false
 	_all_defs = [ASEN_DEF, DJOLEV_DEF]
 	var tmp := Label.new()
 	add_child(tmp)
@@ -27,6 +28,9 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if MenuManager.is_open():
+		return
+
 	if event is InputEventKey:
 		var kev := event as InputEventKey
 		if not kev.pressed or kev.echo:
@@ -92,6 +96,8 @@ func _draw() -> void:
 
 	draw_string(_font, Vector2(20.0, H - 14.0), "P1: A/D select   W confirm", Color(0.5, 0.5, 0.65))
 	draw_string(_font, Vector2(W * 0.5 + 20.0, H - 14.0), "P2: ←/→ select   ↑ confirm", Color(0.5, 0.5, 0.65))
+
+	MenuManager.draw_overlay(self)
 
 
 func _draw_player_card(pi: int) -> void:

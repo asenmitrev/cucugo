@@ -37,6 +37,7 @@ mixer/output_rate=22050
 [autoload]
 
 ControllerMapper="*res://scripts/ControllerMapper.gd"
+MenuManager="*res://scripts/MenuManager.gd"
 
 [display]
 

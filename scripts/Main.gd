@@ -6,6 +6,9 @@ const GRAV := 900.0
 const SW := 90.0
 const SH := 90.0
 
+const P1_START := Vector2(140.0, 300.0)
+const P2_START := Vector2(570.0, 300.0)
+
 const PLATS := [
 	[0.0,   400.0, 800.0, 50.0],
 	[80.0,  305.0, 165.0, 16.0],
@@ -49,52 +52,10 @@ var _lbl_winner: Label
 var _lbl_restart: Label
 var _lbl_controls: Label
 
-# --- Controls menu ---
-var show_controls: bool = false
-var controls_sel: int = 0
-
-var _ctrl_title: Label
-var _ctrl_hint: Label
-var _ctrl_font: Font
-
-var _ctrl_bindings: Dictionary = {}
-
-const MAIN_MENU_ITEMS := ["Controls", "Quit"]
-var show_main_menu: bool = false
-var main_menu_sel: int = 0
-
-const CTRL_ACTIONS := [
-	{"player": 0, "label": "Skill 1", "action": "p1_skill1"},
-	{"player": 0, "label": "Skill 2", "action": "p1_skill2"},
-	{"player": 0, "label": "Skill 3", "action": "p1_skill3"},
-	{"player": 1, "label": "Skill 1", "action": "p2_skill1"},
-	{"player": 1, "label": "Skill 2", "action": "p2_skill2"},
-	{"player": 1, "label": "Skill 3", "action": "p2_skill3"},
-]
-
-const CTRL_VISIBLE_ROWS := 6
-const CTRL_ROW_H := 28
-const CTRL_BOX_W := 560
-const CTRL_BOX_H := 320
-
-var DEFAULT_BINDS := {
-	"p1_left":    KEY_A,
-	"p1_right":   KEY_D,
-	"p1_jump":    KEY_W,
-	"p1_skill1":  KEY_R,
-	"p1_skill2":  KEY_F,
-	"p1_skill3":  KEY_V,
-	"p2_left":    KEY_LEFT,
-	"p2_right":   KEY_RIGHT,
-	"p2_jump":    KEY_UP,
-	"p2_skill1":  KEY_SEMICOLON,
-	"p2_skill2":  KEY_APOSTROPHE,
-	"p2_skill3":  KEY_BACKSLASH,
-}
-
 
 func _ready() -> void:
 	OS.window_fullscreen = true
+	MenuManager.locked = false
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
@@ -120,27 +81,6 @@ func _ready() -> void:
 	for lbl in [_lbl_p1, _lbl_p2, _lbl_controls, _lbl_winner, _lbl_restart]:
 		ui.add_child(lbl)
 
-	# Controls menu UI
-	_ctrl_title = _make_lbl("CONTROLS", Vector2(0, 28), Color.white)
-	_ctrl_title.rect_size = Vector2(CTRL_BOX_W, 30)
-	_ctrl_title.rect_scale = Vector2(1.6, 1.6)
-	_ctrl_title.align = Label.ALIGN_CENTER
-	_ctrl_title.visible = false
-	ui.add_child(_ctrl_title)
-
-	_ctrl_hint = _make_lbl("", Vector2(0, CTRL_BOX_H - 28), Color(0.6, 0.6, 0.8))
-	_ctrl_hint.rect_size = Vector2(CTRL_BOX_W, 22)
-	_ctrl_hint.rect_scale = Vector2(1.0, 1.0)
-	_ctrl_hint.align = Label.ALIGN_CENTER
-	_ctrl_hint.visible = false
-	ui.add_child(_ctrl_hint)
-
-	_ctrl_font = _ctrl_title.get_font("font")
-
-	_ctrl_update_hint()
-	_setup_default_controls()
-	_ctrl_load()
-
 	_init_player(0, _p1)
 	_init_player(1, _p2)
 
@@ -152,160 +92,6 @@ func _make_lbl(txt: String, pos: Vector2, col: Color) -> Label:
 	l.rect_position = pos
 	l.add_color_override("font_color", col)
 	return l
-
-# ── Controls menu helpers ──────────────────────────────────────
-
-func _setup_default_controls() -> void:
-	for action in DEFAULT_BINDS:
-		if not _input_map_has_action(action):
-			InputMap.add_action(action)
-		var ev := InputEventKey.new()
-		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev)
-
-
-func _input_map_has_action(name: String) -> bool:
-	var actions: Array = InputMap.get_actions()
-	for a in actions:
-		if a == name:
-			return true
-	return false
-
-func _apply_event_to_action(action: String, ev: InputEvent) -> void:
-	var old: InputEvent = _ctrl_bindings.get(action, null)
-	if old != null:
-		InputMap.action_erase_event(action, old)
-	InputMap.action_add_event(action, ev)
-	_ctrl_bindings[action] = ev
-
-func _get_binding_display(action: String) -> String:
-	var ev: InputEvent = _ctrl_bindings.get(action, null)
-	if ev == null:
-		return "(unbound)"
-	if ev is InputEventKey:
-		var s: String = OS.get_scancode_string((ev as InputEventKey).scancode)
-		return s if s != "" else "(unbound)"
-	if ev is InputEventJoypadButton:
-		return "Joy:%d" % (ev as InputEventJoypadButton).button_index
-	return "(unbound)"
-
-
-func _ctrl_update_hint() -> void:
-	if controls_sel == CTRL_ACTIONS.size():
-		_ctrl_hint.text = "↑↓ navigate   Enter/any button to reset   Esc/B close"
-	else:
-		_ctrl_hint.text = "↑↓ navigate   any key/button to bind   Esc/B close"
-
-func _ctrl_toggle() -> void:
-	if show_controls:
-		_ctrl_save()
-	show_controls = not show_controls
-	_ctrl_title.visible = show_controls
-	_ctrl_hint.visible = show_controls
-	if show_controls:
-		var bx: float = (W - CTRL_BOX_W) / 2.0
-		var by: float = (H - CTRL_BOX_H) / 2.0
-		_ctrl_title.rect_position = Vector2(bx, by + 28)
-		_ctrl_hint.rect_position = Vector2(bx, by + CTRL_BOX_H - 28)
-
-func _main_menu_confirm() -> void:
-	match main_menu_sel:
-		0:  # Controls
-			show_main_menu = false
-			_ctrl_toggle()
-		1:  # Quit
-			get_tree().quit()
-
-func _ctrl_nav(dir: int) -> void:
-	controls_sel = wrapi(controls_sel + dir, 0, CTRL_ACTIONS.size() + 1)
-	_ctrl_update_hint()
-
-func _ctrl_reset_defaults() -> void:
-	for action in DEFAULT_BINDS:
-		var ev := InputEventKey.new()
-		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev)
-	_ctrl_save()
-
-func _ctrl_remap(ev: InputEvent) -> void:
-	var ca: Dictionary = CTRL_ACTIONS[controls_sel]
-	_apply_event_to_action(ca["action"], ev)
-
-func _ctrl_draw_rows() -> void:
-	var bx: float = (W - CTRL_BOX_W) / 2.0
-	var by: float = (H - CTRL_BOX_H) / 2.0
-	var row_top: float = by + 62.0
-
-	var max_offset: int = max(0, CTRL_ACTIONS.size() - CTRL_VISIBLE_ROWS)
-	var eff_sel: int = min(controls_sel, CTRL_ACTIONS.size() - 1)
-	var offset: int = clamp(eff_sel - 3, 0, max_offset)
-
-	var prev_player: int = -1
-	for v in CTRL_VISIBLE_ROWS:
-		var idx: int = offset + v
-		if idx >= CTRL_ACTIONS.size():
-			break
-		var ca: Dictionary = CTRL_ACTIONS[idx]
-		var ry: float = row_top + float(v) * CTRL_ROW_H
-
-		if ca["player"] != prev_player:
-			prev_player = ca["player"]
-			var pname: String = "Player 1" if ca["player"] == 0 else "Player 2"
-			var pcol: Color = ASEN_DEF.label_color if ca["player"] == 0 else DJOLEV_DEF.label_color
-			draw_string(_ctrl_font, Vector2(bx + 14.0, ry - 4.0), pname)
-
-		var key_str: String = _get_binding_display(ca["action"])
-		var line: String = "  %s: %s" % [ca["label"], key_str]
-
-		var col: Color = Color(1.0, 1.0, 1.0, 1.0) if idx == controls_sel else Color(0.75, 0.75, 0.85, 1.0)
-		draw_string(_ctrl_font, Vector2(bx + 14.0, ry + CTRL_ROW_H - 8.0), line)
-
-	var reset_ry: float = row_top + float(CTRL_VISIBLE_ROWS) * CTRL_ROW_H + 10.0
-	var reset_col: Color = Color(1.0, 0.55, 0.55) if controls_sel == CTRL_ACTIONS.size() else Color(0.65, 0.42, 0.42)
-	draw_string(_ctrl_font, Vector2(bx + CTRL_BOX_W * 0.5 - 62.0, reset_ry + CTRL_ROW_H - 8.0), "[ Reset to Default ]", reset_col)
-
-func _ctrl_save() -> void:
-	var file := File.new()
-	file.open("user://controls.cfg", File.WRITE)
-	for ca in CTRL_ACTIONS:
-		var action: String = ca["action"]
-		var ev: InputEvent = _ctrl_bindings.get(action, null)
-		if ev is InputEventKey:
-			file.store_line("%s=key:%d" % [action, (ev as InputEventKey).scancode])
-		elif ev is InputEventJoypadButton:
-			file.store_line("%s=joy:%d" % [action, (ev as InputEventJoypadButton).button_index])
-	file.close()
-
-func _ctrl_load() -> void:
-	var file := File.new()
-	if file.file_exists("user://controls.cfg"):
-		if file.open("user://controls.cfg", File.READ) == OK:
-			while !file.eof_reached():
-				var line: String = file.get_line()
-				var parts: PoolStringArray = line.split("=")
-				if parts.size() == 2:
-					var action: String = parts[0]
-					var val: String = parts[1]
-					if val.begins_with("key:"):
-						var keycode: int = int(val.substr(4))
-						if keycode > 0:
-							var kev := InputEventKey.new()
-							kev.scancode = keycode
-							_apply_event_to_action(action, kev)
-					elif val.begins_with("joy:"):
-						var btn: int = int(val.substr(4))
-						var jev := InputEventJoypadButton.new()
-						jev.button_index = btn
-						jev.pressed = true
-						_apply_event_to_action(action, jev)
-					else:
-						# Legacy format: plain integer keycode
-						var keycode: int = int(val)
-						if keycode > 0:
-							var kev := InputEventKey.new()
-							kev.scancode = keycode
-							_apply_event_to_action(action, kev)
-			file.close()
 
 
 func _init_player(i: int, def: CharacterDef) -> void:
@@ -321,8 +107,8 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	var slot: String = "p1" if i == 0 else "p2"
 	pl[i] = {
 		"def": def,
-		"name": def.display_name, "pos": def.start_pos, "vel": Vector2.ZERO,
-		"right": def.facing_right, "on_gnd": false,
+		"name": def.display_name, "pos": P1_START if i == 0 else P2_START, "vel": Vector2.ZERO,
+		"right": i == 0, "on_gnd": false,
 		"state": "idle",
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
@@ -349,109 +135,6 @@ func _anim_spd(def: CharacterDef, state: String) -> float:
 	return 0.15
 
 
-func _input(event: InputEvent) -> void:
-	# Controls menu is open — consume all input here
-	if show_controls:
-		get_tree().set_input_as_handled()
-		if event is InputEventKey:
-			var ev: InputEventKey = event as InputEventKey
-			if not ev.pressed or ev.echo:
-				return
-			if ev.scancode == KEY_ESCAPE:
-				_ctrl_toggle()
-			elif ev.scancode == KEY_UP:
-				_ctrl_nav(-1)
-				update()
-			elif ev.scancode == KEY_DOWN:
-				_ctrl_nav(1)
-				update()
-			elif controls_sel == CTRL_ACTIONS.size():
-				if ev.scancode == KEY_ENTER or ev.scancode == KEY_KP_ENTER:
-					_ctrl_reset_defaults()
-					update()
-			else:
-				_ctrl_remap(event)
-				update()
-			return
-		if event is InputEventJoypadButton:
-			var ev: InputEventJoypadButton = event as InputEventJoypadButton
-			if not ev.pressed:
-				return
-			if ev.button_index == JOY_DPAD_UP:
-				_ctrl_nav(-1)
-				update()
-			elif ev.button_index == JOY_DPAD_DOWN:
-				_ctrl_nav(1)
-				update()
-			elif event.is_action_pressed("ui_cancel"):
-				_ctrl_toggle()
-			elif controls_sel == CTRL_ACTIONS.size():
-				_ctrl_reset_defaults()
-				update()
-			else:
-				_ctrl_remap(event)
-				update()
-			return
-		if event is InputEventJoypadMotion:
-			var ev: InputEventJoypadMotion = event as InputEventJoypadMotion
-			if ev.axis == JOY_AXIS_1 or ev.axis == 7:
-				if ev.axis_value < -0.5:
-					_ctrl_nav(-1)
-					update()
-				elif ev.axis_value > 0.5:
-					_ctrl_nav(1)
-					update()
-		return
-
-	# Main menu is open — consume all input here
-	if show_main_menu:
-		get_tree().set_input_as_handled()
-		if event is InputEventKey:
-			var ev: InputEventKey = event as InputEventKey
-			if not ev.pressed or ev.echo:
-				return
-			if ev.scancode == KEY_ESCAPE:
-				show_main_menu = false
-				update()
-			elif ev.scancode == KEY_UP:
-				main_menu_sel = wrapi(main_menu_sel - 1, 0, MAIN_MENU_ITEMS.size())
-				update()
-			elif ev.scancode == KEY_DOWN:
-				main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
-				update()
-			elif  ev.scancode == KEY_KP_ENTER or ev.scancode == KEY_SPACE:
-				_main_menu_confirm()
-		if event is InputEventJoypadButton:
-			var ev: InputEventJoypadButton = event as InputEventJoypadButton
-			if not ev.pressed:
-				return
-			if ev.button_index == JOY_DPAD_UP:
-				main_menu_sel = wrapi(main_menu_sel - 1, 0, MAIN_MENU_ITEMS.size())
-				update()
-			elif ev.button_index == JOY_DPAD_DOWN:
-				main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
-				update()
-			elif ev.button_index == JOY_SONY_X or ev.button_index == JOY_XBOX_A:
-				_main_menu_confirm()
-			elif event.is_action_pressed("ui_cancel"):
-				show_main_menu = false
-				update()
-		return
-
-	# No overlay open — Escape or Start opens the main menu (not during game-over countdown)
-	if not game_over:
-		if event is InputEventKey:
-			var ev: InputEventKey = event as InputEventKey
-			if ev.pressed and not ev.echo and ev.scancode == KEY_ESCAPE:
-				show_main_menu = true
-				main_menu_sel = 0
-				get_tree().set_input_as_handled()
-				return
-		if InputMap.has_action("start") and event.is_action_pressed("start"):
-			show_main_menu = true
-			main_menu_sel = 0
-			get_tree().set_input_as_handled()
-
 func _process(delta: float) -> void:
 	var dt := min(delta, 0.1)
 
@@ -463,7 +146,7 @@ func _process(delta: float) -> void:
 		update()
 		return
 
-	if show_main_menu or show_controls:
+	if MenuManager.is_open():
 		update()
 		return
 
@@ -695,6 +378,7 @@ func _end_game(text: String) -> void:
 		return
 	game_over = true
 	restart_t = 0.0
+	MenuManager.locked = true
 	_lbl_winner.text = text
 	_lbl_winner.visible = true
 	_lbl_restart.visible = true
@@ -775,42 +459,4 @@ func _draw() -> void:
 	if game_over:
 		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.58))
 
-	# Main menu overlay
-	if show_main_menu:
-		var mw: float = 280.0
-		var mh: float = 170.0
-		var mx: float = (W - mw) / 2.0
-		var my: float = (H - mh) / 2.0
-		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.65))
-		draw_rect(Rect2(mx, my, mw, mh), Color(0.08, 0.08, 0.14))
-		draw_rect(Rect2(mx, my, mw, mh), Color(0.45, 0.4, 0.65), false, 2.0)
-		draw_string(_ctrl_font, Vector2(mx + mw * 0.5 - 22.0, my + 30.0), "MENU", Color.white)
-		for idx in MAIN_MENU_ITEMS.size():
-			var iy: float = my + 72.0 + float(idx) * 38.0
-			if idx == main_menu_sel:
-				draw_rect(Rect2(mx + 8.0, iy - 20.0, mw - 16.0, 30.0), Color(0.22, 0.22, 0.35))
-			var col: Color = Color(1.0, 1.0, 1.0) if idx == main_menu_sel else Color(0.65, 0.65, 0.78)
-			draw_string(_ctrl_font, Vector2(mx + mw * 0.5 - 24.0, iy), MAIN_MENU_ITEMS[idx], col)
-		draw_string(_ctrl_font, Vector2(mx + 10.0, my + mh - 12.0), "↑↓ navigate   Enter confirm   Esc close", Color(0.5, 0.5, 0.65))
-
-	# Controls menu overlay
-	if show_controls:
-		var bx: float = (W - CTRL_BOX_W) / 2.0
-		var by: float = (H - CTRL_BOX_H) / 2.0
-		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.65))
-		draw_rect(Rect2(bx, by, CTRL_BOX_W, CTRL_BOX_H), Color(0.08, 0.08, 0.14))
-		draw_rect(Rect2(bx, by, CTRL_BOX_W, CTRL_BOX_H), Color(0.45, 0.4, 0.65), false, 2.0)
-
-		var row_top: float = by + 62.0
-		var max_offset: int = max(0, CTRL_ACTIONS.size() - CTRL_VISIBLE_ROWS)
-		var eff_sel: int = min(controls_sel, CTRL_ACTIONS.size() - 1)
-		var offset: int = clamp(eff_sel - 3, 0, max_offset)
-		if controls_sel == CTRL_ACTIONS.size():
-			var reset_ry: float = row_top + float(CTRL_VISIBLE_ROWS) * CTRL_ROW_H + 10.0
-			draw_rect(Rect2(bx + 4.0, reset_ry - 2.0, CTRL_BOX_W - 8.0, CTRL_ROW_H + 4.0), Color(0.30, 0.14, 0.14))
-		else:
-			var sel_vis: int = controls_sel - offset
-			var sel_ry: float = row_top + float(sel_vis) * CTRL_ROW_H
-			draw_rect(Rect2(bx + 4.0, sel_ry - 2.0, CTRL_BOX_W - 8.0, CTRL_ROW_H + 4.0), Color(0.22, 0.22, 0.35))
-
-		_ctrl_draw_rows()
+	MenuManager.draw_overlay(self)
