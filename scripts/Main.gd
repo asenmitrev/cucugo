@@ -19,6 +19,7 @@ const PLATS := [
 
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
+var SIYANA_DEF = preload("res://resources/siyana.tres")
 
 # Preload all sprite textures at parse time so _init_player does zero disk I/O.
 const _TEX := {
@@ -33,6 +34,12 @@ const _TEX := {
         "walk":  preload("res://assets/djolev/djolev-walk.png"),
         "jump":  preload("res://assets/djolev/djolev-jump.png"),
         "punch": preload("res://assets/djolev/djolev-punch.png"),
+    },
+    "siyana": {
+        "idle":  preload("res://assets/siyana/siyana-idle.png"),
+        "walk":  preload("res://assets/siyana/siyana-walk.png"),
+        "jump":  preload("res://assets/siyana/siyana-jump.png"),
+        "punch": preload("res://assets/siyana/siyana-punch.png"),
     },
 }
 
@@ -416,7 +423,8 @@ func _draw() -> void:
 			if tex != null:
 				var center: Vector2 = rect.position + rect.size * 0.5
 				draw_set_transform(center, ae["rotation"], Vector2.ONE)
-				draw_texture_rect(tex, Rect2(-rect.size * 0.5, rect.size), false)
+				var src_rect: Rect2 = Rect2(0, 0, 128, 128)
+				draw_texture_rect_region(tex, Rect2(-rect.size * 0.5, rect.size), src_rect)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			else:
 				var col: Color = ae["skill"].effect_color

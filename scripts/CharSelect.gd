@@ -5,10 +5,12 @@ const H := 450.0
 
 var ASEN_DEF   = preload("res://resources/asen.tres")
 var DJOLEV_DEF = preload("res://resources/djolev.tres")
+var SIYANA_DEF = preload("res://resources/siyana.tres")
 
 const _IDLE_TEX := {
 	"asen":   preload("res://assets/asen/asen-idle.png"),
 	"djolev": preload("res://assets/djolev/djolev-idle.png"),
+	"siyana": preload("res://assets/siyana/siyana-idle.png"),
 }
 
 var _all_defs: Array = []
@@ -20,7 +22,7 @@ var _font: Font
 func _ready() -> void:
 	OS.window_fullscreen = true
 	MenuManager.locked = false
-	_all_defs = [ASEN_DEF, DJOLEV_DEF]
+	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF]
 	var tmp := Label.new()
 	add_child(tmp)
 	_font = tmp.get_font("font")

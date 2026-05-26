@@ -1,0 +1,29 @@
+[gd_resource type="Resource" load_steps=3 format=2]
+
+[ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
+[ext_resource path="res://resources/skills/siyana_baby_throw.tres" type="Resource" id=2]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "SIYANA"
+char_name = "siyana"
+label_color = Color( 1, 0.55, 0.7, 1 )
+action_left = "p1_left"
+action_right = "p1_right"
+action_jump = "p1_jump"
+speed = 195.0
+jump_vel = -510.0
+body_w = 40.0
+body_h = 82.0
+body_offset_x = 20.0
+body_offset_y = 4.0
+anim_idle = 0.18
+anim_walk = 0.10
+anim_jump = 0.14
+anim_dead = 0.20
+action_skill1 = "p1_skill1"
+action_skill2 = ""
+action_skill3 = ""
+skill1 = ExtResource( 2 )
+skill2 = null
+skill3 = null

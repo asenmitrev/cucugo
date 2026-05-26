@@ -147,6 +147,9 @@ func _apply_config(inputs: Dictionary, device: int) -> void:
 			var ev = event.duplicate()
 			ev.device = device
 			_replace_joypad_event(game_action, ev)
+			# Register with MenuManager so it tracks this device-specific binding
+			if MenuManager.has_method("register_joypad_binding"):
+				MenuManager.register_joypad_binding(game_action, ev)
 
 
 func _make_event(info: Dictionary, device: int) -> InputEvent:

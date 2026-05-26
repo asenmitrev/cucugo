@@ -42,6 +42,7 @@ var DEFAULT_BINDS: Dictionary = {
 	"p2_skill3":  KEY_BACKSLASH,
 }
 
+# _ctrl_bindings maps action_name -> Array[InputEvent]  (supports multiple joypads + keyboard fallback)
 var _ctrl_bindings: Dictionary = {}
 var _hint_text: String = ""
 var font: Font
@@ -183,14 +184,14 @@ func _ctrl_nav(dir: int) -> void:
 
 func _ctrl_remap(ev: InputEvent) -> void:
 	var ca: Dictionary = CTRL_ACTIONS[controls_sel]
-	_apply_event_to_action(ca["action"], ev)
+	_apply_event_to_action(ca["action"], ev, _get_event_device(ev))
 
 
 func _ctrl_reset_defaults() -> void:
 	for action in DEFAULT_BINDS:
 		var ev := InputEventKey.new()
 		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev)
+		_apply_event_to_action(action, ev, -1)
 	_ctrl_save()
 
 
@@ -207,7 +208,7 @@ func _setup_default_controls() -> void:
 			InputMap.add_action(action)
 		var ev := InputEventKey.new()
 		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev)
+		_apply_event_to_action(action, ev, -1)
 
 
 func _input_map_has_action(aname: String) -> bool:
@@ -217,24 +218,63 @@ func _input_map_has_action(aname: String) -> bool:
 	return false
 
 
-func _apply_event_to_action(action: String, ev: InputEvent) -> void:
-	var old: InputEvent = _ctrl_bindings.get(action, null)
-	if old != null:
-		InputMap.action_erase_event(action, old)
-	InputMap.action_add_event(action, ev)
-	_ctrl_bindings[action] = ev
+func _apply_event_to_action(action: String, ev: InputEvent, device: int) -> void:
+	var events: Array = _ctrl_bindings.get(action, [])
+
+	if ev is InputEventKey:
+		# Keyboard: replace all keyboard events for this action
+		var new_events := []
+		for e in events:
+			if e is InputEventKey:
+				InputMap.action_erase_event(action, e)
+			else:
+				new_events.append(e)
+		events = new_events
+		InputMap.action_add_event(action, ev)
+		events.append(ev)
+
+	elif ev is InputEventJoypadButton:
+		# Joypad: replace only the event for this specific device
+		var new_events := []
+		for e in events:
+			if e is InputEventJoypadButton and e.device == device:
+				InputMap.action_erase_event(action, e)
+			else:
+				new_events.append(e)
+		events = new_events
+		var joy_ev: InputEventJoypadButton = ev
+		joy_ev.device = device
+		InputMap.action_add_event(action, joy_ev)
+		events.append(joy_ev)
+
+	_ctrl_bindings[action] = events
+
+
+func _get_event_device(ev: InputEvent) -> int:
+	if ev is InputEventJoypadButton:
+		return (ev as InputEventJoypadButton).device
+	if ev is InputEventJoypadMotion:
+		return (ev as InputEventJoypadMotion).device
+	return -1
 
 
 func _get_binding_display(action: String) -> String:
-	var ev: InputEvent = _ctrl_bindings.get(action, null)
-	if ev == null:
+	var events: Array = _ctrl_bindings.get(action, [])
+	if events.empty():
 		return "(unbound)"
-	if ev is InputEventKey:
-		var s: String = OS.get_scancode_string((ev as InputEventKey).scancode)
-		return s if s != "" else "(unbound)"
-	if ev is InputEventJoypadButton:
-		return "Joy:%d" % (ev as InputEventJoypadButton).button_index
-	return "(unbound)"
+
+	var parts := []
+	for e in events:
+		if e is InputEventKey:
+			parts.append(OS.get_scancode_string((e as InputEventKey).scancode))
+		elif e is InputEventJoypadButton:
+			var dev: int = e.device
+			var dev_name: String = Input.get_joy_name(dev) if dev >= 0 else "any"
+			if dev_name == "":
+				dev_name = "dev%d" % dev
+			parts.append("Joy:%d(%s)" % [e.button_index, dev_name])
+
+	return ", ".join(parts) if parts.size() > 1 else parts[0] if parts.size() == 1 else "(unbound)"
 
 
 func _ctrl_save() -> void:
@@ -242,11 +282,14 @@ func _ctrl_save() -> void:
 	file.open("user://controls.cfg", File.WRITE)
 	for ca in CTRL_ACTIONS:
 		var action: String = ca["action"]
-		var ev: InputEvent = _ctrl_bindings.get(action, null)
-		if ev is InputEventKey:
-			file.store_line("%s=key:%d" % [action, (ev as InputEventKey).scancode])
-		elif ev is InputEventJoypadButton:
-			file.store_line("%s=joy:%d" % [action, (ev as InputEventJoypadButton).button_index])
+		var events: Array = _ctrl_bindings.get(action, [])
+		if events.empty():
+			continue
+		for e in events:
+			if e is InputEventKey:
+				file.store_line("%s=key:%d" % [action, (e as InputEventKey).scancode])
+			elif e is InputEventJoypadButton:
+				file.store_line("%s=joy:%d:%d" % [action, e.button_index, e.device])
 	file.close()
 
 
@@ -258,30 +301,53 @@ func _ctrl_load() -> void:
 		return
 	while not file.eof_reached():
 		var line: String = file.get_line()
-		var parts: PoolStringArray = line.split("=")
-		if parts.size() != 2:
+		var eq_parts: PoolStringArray = line.split("=")
+		if eq_parts.size() != 2:
 			continue
-		var action: String = parts[0]
-		var val: String = parts[1]
+		var action: String = eq_parts[0]
+		var val: String = eq_parts[1]
 		if val.begins_with("key:"):
 			var keycode: int = int(val.substr(4))
 			if keycode > 0:
 				var kev := InputEventKey.new()
 				kev.scancode = keycode
-				_apply_event_to_action(action, kev)
+				_apply_event_to_action(action, kev, -1)
 		elif val.begins_with("joy:"):
-			var btn: int = int(val.substr(4))
+			var joy_data: PoolStringArray = val.substr(4).split(":")
+			var btn: int = int(joy_data[0])
+			var dev: int = int(joy_data[1]) if joy_data.size() > 1 else -1
 			var jev := InputEventJoypadButton.new()
 			jev.button_index = btn
+			jev.device = dev
 			jev.pressed = true
-			_apply_event_to_action(action, jev)
+			_apply_event_to_action(action, jev, dev)
 		else:
+			# Legacy format (plain number = keycode)
 			var keycode: int = int(val)
 			if keycode > 0:
 				var kev := InputEventKey.new()
 				kev.scancode = keycode
-				_apply_event_to_action(action, kev)
+				_apply_event_to_action(action, kev, -1)
 	file.close()
+
+
+# Called from ControllerMapper to register a joypad binding without erasing other devices
+func register_joypad_binding(action: String, ev: InputEvent) -> void:
+	var events: Array = _ctrl_bindings.get(action, [])
+	var device: int = ev.device if ev.has("device") else -1
+
+	# Remove any existing joypad event for this device
+	var new_events := []
+	for e in events:
+		if e is InputEventJoypadButton and e.device == device:
+			InputMap.action_erase_event(action, e)
+		else:
+			new_events.append(e)
+	events = new_events
+
+	InputMap.action_add_event(action, ev)
+	events.append(ev)
+	_ctrl_bindings[action] = events
 
 
 # ── Drawing ──────────────────────────────────────────────────────
