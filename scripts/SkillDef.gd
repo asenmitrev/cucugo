@@ -18,3 +18,4 @@ export var effect_sprite_path: String = ""
 export var effect_dx: float = 0.0
 export var effect_dy: float = 0.0
 export var effect_rotation_speed: float = 0.0
+export var effect_gravity: float = 0.0

@@ -551,7 +551,10 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	var live_effects := []
 	for ae in p["active_effects"]:
 		ae["t"] += dt
-		ae["rect"] = Rect2(ae["rect"].position + Vector2(ae["dx"], ae["dy"]) * dt, ae["rect"].size)
+		ae["vy"] += ae["skill"].effect_gravity * dt
+		ae["rect"] = Rect2(ae["rect"].position + Vector2(ae["dx"], ae["dy"] + ae["vy"]) * dt, ae["rect"].size)
+		if ae["skill"].effect_gravity > 0.0 and ae["vy"] >= 0.0:
+			_collide_effect_plats(ae)
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if not ae["hit"] and not o["dead"]:
 			var odef: CharacterDef = o["def"]
@@ -642,6 +645,7 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 		"tex":            ae_tex,
 		"dx":             sk.effect_dx * dir,
 		"dy":             sk.effect_dy,
+		"vy":             0.0,
 		"rotation":       0.0,
 		"rotation_speed": deg2rad(sk.effect_rotation_speed),
 	})
@@ -667,6 +671,23 @@ func _collide_plats(p: Dictionary) -> void:
 			p["pos"].y = py - _pd.body_h - _pd.body_offset_y
 			p["vel"].y = 0.0
 			p["on_gnd"] = true
+
+
+func _collide_effect_plats(ae: Dictionary) -> void:
+	var rect: Rect2 = ae["rect"]
+	for plat in PLATS:
+		var px: float = plat[0]
+		var py: float = plat[1]
+		var pw: float = plat[2]
+		var bottom: float = rect.end.y
+		if rect.position.x < px + pw - 5.0 \
+				and rect.end.x > px + 5.0 \
+				and bottom >= py \
+				and bottom <= py + 35.0:
+			ae["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
+			ae["vy"] = 0.0
+			ae["dx"] = 0.0
+			return
 
 
 func _end_game(text: String) -> void:

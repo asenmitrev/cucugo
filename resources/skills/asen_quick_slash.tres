@@ -19,3 +19,4 @@ effect_sprite_path = "res://assets/asen/shuriken.png"
 effect_dx = 420.0
 effect_dy = 0.0
 effect_rotation_speed = 540.0
+effect_gravity = 0.0
