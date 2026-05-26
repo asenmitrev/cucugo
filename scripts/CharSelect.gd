@@ -27,10 +27,7 @@ func _ready() -> void:
 	tmp.queue_free()
 
 
-func _input(event: InputEvent) -> void:
-	if MenuManager.is_open():
-		return
-
+func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var kev := event as InputEventKey
 		if not kev.pressed or kev.echo:
