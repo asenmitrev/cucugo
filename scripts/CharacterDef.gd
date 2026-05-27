@@ -4,9 +4,6 @@ class_name CharacterDef
 export var display_name: String = ""
 export var char_name: String = ""
 export var label_color: Color = Color.white
-export var action_left: String = ""
-export var action_right: String = ""
-export var action_jump: String = ""
 
 export var speed: float = 210.0
 export var jump_vel: float = -530.0
@@ -25,10 +22,6 @@ export var anim_dead: float = 0.20
 export var anim_getting_up: float = 0.12
 
 export var lives: int = 1
-
-export var action_skill1: String = ""
-export var action_skill2: String = ""
-export var action_skill3: String = ""
 
 export(Resource) var skill1 = null
 export(Resource) var skill2 = null
