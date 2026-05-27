@@ -427,10 +427,12 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			var count: int = limit if limit > 0 else 1
 			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
 			for j in range(count):
-				var child_dir: float = ae["facing"] if j % 2 == 0 else -ae["facing"]
+				var spread: float = lerp(-1.0, 1.0, float(j) / float(count - 1)) if count > 1 else 1.0
+				var child_dir: float = spread
 				var cx: float = center.x - csk.effect_width * 0.5
 				var cy: float = center.y - csk.effect_height * 0.5
 				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), child_dir))
+			ae["t"] = ae["skill"].effect_duration
 			ae["ground_hit"] = false
 
 		if ae["t"] < ae["skill"].effect_duration:
