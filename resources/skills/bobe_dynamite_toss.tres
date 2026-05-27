@@ -21,6 +21,7 @@ effect_dy = -380.0
 effect_rotation_speed = 120.0
 effect_gravity = 700.0
 bounce_coefficient = 0.0
+effect_turnaround = false
 child_skill_path = ""
 child_spawn_interval = 0.0
 child_spawn_limit = 0
