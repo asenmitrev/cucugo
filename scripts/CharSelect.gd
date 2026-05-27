@@ -19,23 +19,18 @@ var SASHO_DEF  = preload("res://resources/sasho.tres")
 var VALKA_DEF  = preload("res://resources/valka.tres")
 var VELI_DEF   = preload("res://resources/veli.tres")
 
-const _IDLE_TEX := {
-	"asen":   preload("res://assets/asen/asen-idle.png"),
-	"djolev": preload("res://assets/djolev/djolev-idle.png"),
-	"siyana": preload("res://assets/siyana/siyana-idle.png"),
-	"crunch": preload("res://assets/crunch/crunch-idle.png"),
-	"dani":   preload("res://assets/dani/dani-idle.png"),
-	"drago":  preload("res://assets/drago/drago-idle.png"),
-	"rado":   preload("res://assets/rado/rado-idle.png"),
-	"yavor":  preload("res://assets/yavor/yavor-idle.png"),
-	"5q":    preload("res://assets/5q/5q-idle.png"),
-	"bobe":   preload("res://assets/bobe/bobe-idle.png"),
-	"ipman":  preload("res://assets/ipman/ipman-idle.png"),
-	"itso":   preload("res://assets/itso/itso-idle.png"),
-	"sasho":  preload("res://assets/sasho/sasho-idle.png"),
-	"valka":  preload("res://assets/valka/valka-idle.png"),
-	"veli":   preload("res://assets/veli/veli-walk.png"),
-}
+var _idle_tex_cache: Dictionary = {}
+
+func _get_idle_tex(char_name: String) -> Texture:
+	if not _idle_tex_cache.has(char_name):
+		var path: String
+		match char_name:
+			"veli":
+				path = "res://assets/veli/veli-walk.png"
+			_:
+				path = "res://assets/" + char_name + "/" + char_name + "-idle.png"
+		_idle_tex_cache[char_name] = load(path)
+	return _idle_tex_cache[char_name]
 
 var _all_defs: Array = []
 var _cs_sel: Array = [0, 0]
@@ -145,7 +140,7 @@ func _draw_player_card(pi: int) -> void:
 	var portrait_size := 140.0
 	var px: float = cx - portrait_size * 0.5
 	var py: float = card_y + 35.0
-	var tex: Texture = _IDLE_TEX[def.char_name]
+	var tex: Texture = _get_idle_tex(def.char_name)
 	draw_texture_rect_region(tex, Rect2(px, py, portrait_size, portrait_size), Rect2(0, 0, 128, 128))
 
 	if not confirmed:

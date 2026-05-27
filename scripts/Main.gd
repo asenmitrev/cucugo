@@ -34,129 +34,144 @@ var SASHO_DEF  = preload("res://resources/sasho.tres")
 var VALKA_DEF  = preload("res://resources/valka.tres")
 var VELI_DEF   = preload("res://resources/veli.tres")
 
-# Preload all sprite textures at parse time so _init_player does zero disk I/O.
-const _TEX := {
-    "asen": {
-        "idle":    preload("res://assets/asen/asen-idle.png"),
-        "walk":    preload("res://assets/asen/asen-walk.png"),
-        "jump":    preload("res://assets/asen/asen-jump.png"),
-        "punch":   preload("res://assets/asen/asen-punch.png"),
-        "falling": preload("res://assets/asen/asen-falling.png"),
-    },
-    "djolev": {
-        "idle":    preload("res://assets/djolev/djolev-idle.png"),
-        "walk":    preload("res://assets/djolev/djolev-walk.png"),
-        "jump":    preload("res://assets/djolev/djolev-jump.png"),
-        "punch":   preload("res://assets/djolev/djolev-punch.png"),
-        "falling": preload("res://assets/djolev/djolev-falling.png"),
-    },
-    "siyana": {
-        "idle":    preload("res://assets/siyana/siyana-idle.png"),
-        "walk":    preload("res://assets/siyana/siyana-walk.png"),
-        "jump":    preload("res://assets/siyana/siyana-jump.png"),
-        "punch":   preload("res://assets/siyana/siyana-punch.png"),
-        "kick":    preload("res://assets/siyana/siyana-finger.png"),
-        "falling": preload("res://assets/siyana/siyana-falling.png"),
-    },
-    "crunch": {
-        "idle":    preload("res://assets/crunch/crunch-idle.png"),
-        "walk":    preload("res://assets/crunch/crunch-walk.png"),
-        "jump":    preload("res://assets/crunch/crunch-punch.png"),
-        "punch":   preload("res://assets/crunch/crunch-punch.png"),
-        "kick":    preload("res://assets/crunch/crunch-kick.png"),
-        "flykick": preload("res://assets/crunch/crunch-flykick.png"),
-        "falling": preload("res://assets/crunch/crunch-falling.png"),
-    },
-    "dani": {
-        "idle":    preload("res://assets/dani/dani-idle.png"),
-        "walk":    preload("res://assets/dani/dani-walk.png"),
-        "jump":    preload("res://assets/dani/dani-jump.png"),
-        "punch":   preload("res://assets/dani/dani-punch.png"),
-        "kick":    preload("res://assets/dani/dani-kick.png"),
-        "falling": preload("res://assets/dani/dani-fall.png"),
-    },
-    "drago": {
-        "idle":    preload("res://assets/drago/drago-idle.png"),
-        "walk":    preload("res://assets/drago/drago-walk.png"),
-        "jump":    preload("res://assets/drago/drago-jump.png"),
-        "punch":   preload("res://assets/drago/drago-punch.png"),
-        "kick":    preload("res://assets/drago/drago-kick.png"),
-        "falling": preload("res://assets/drago/drago-fall.png"),
-    },
-    "rado": {
-        "idle":    preload("res://assets/rado/rado-idle.png"),
-        "walk":    preload("res://assets/rado/rado-walk.png"),
-        "jump":    preload("res://assets/rado/rado-jumping.png"),
-        "punch":   preload("res://assets/rado/rado-punch.png"),
-        "kick":    preload("res://assets/rado/rado-kick.png"),
-        "falling": preload("res://assets/rado/rado-falling.png"),
-    },
-    "yavor": {
-        "idle":    preload("res://assets/yavor/yavor-idle.png"),
-        "walk":    preload("res://assets/yavor/yavor-walk.png"),
-        "jump":    preload("res://assets/yavor/yavor-jump.png"),
-        "punch":   preload("res://assets/yavor/yavor-punch.png"),
-        "kick":    preload("res://assets/yavor/yavor-kick.png"),
-        "falling": preload("res://assets/yavor/yavor-falling.png"),
-    },
-    "5q": {
-        "idle":    preload("res://assets/5q/5q-idle.png"),
-        "walk":    preload("res://assets/5q/5q-walk.png"),
-        "jump":    preload("res://assets/5q/5q-jump.png"),
-        "punch":   preload("res://assets/5q/5q-punch.png"),
-        "kick":    preload("res://assets/5q/5q-kick.png"),
-        "falling": preload("res://assets/5q/5q-falls.png"),
-    },
-    "bobe": {
-        "idle":    preload("res://assets/bobe/bobe-idle.png"),
-        "walk":    preload("res://assets/bobe/bobe-walk.png"),
-        "jump":    preload("res://assets/bobe/bobe-jump.png"),
-        "punch":   preload("res://assets/bobe/bobe-punch.png"),
-        "kick":    preload("res://assets/bobe/bobe-kick.png"),
-        "falling": preload("res://assets/bobe/bobe-falling.png"),
-    },
-    "ipman": {
-        "idle":    preload("res://assets/ipman/ipman-idle.png"),
-        "walk":    preload("res://assets/ipman/ipman-walk.png"),
-        "jump":    preload("res://assets/ipman/ipman-jump.png"),
-        "punch":   preload("res://assets/ipman/ipman-punch.png"),
-        "kick":    preload("res://assets/ipman/ipman-kick.png"),
-        "falling": preload("res://assets/ipman/ipman-fall.png"),
-        "getting_up": preload("res://assets/ipman/ipman-getting-up.png"),
-    },
-    "itso": {
-        "idle":    preload("res://assets/itso/itso-idle.png"),
-        "walk":    preload("res://assets/itso/itso-walk.png"),
-        "jump":    preload("res://assets/itso/itso-jump.png"),
-        "punch":   preload("res://assets/itso/itso-punch.png"),
-        "kick":    preload("res://assets/itso/itso-kick.png"),
-        "falling": preload("res://assets/itso/itso-falling.png"),
-    },
-    "sasho": {
-        "idle":    preload("res://assets/sasho/sasho-idle.png"),
-        "walk":    preload("res://assets/sasho/sasho-walk.png"),
-        "jump":    preload("res://assets/sasho/sasho-jump.png"),
-        "punch":   preload("res://assets/sasho/sasho-punch.png"),
-        "kick":    preload("res://assets/sasho/sasho-kick.png"),
-        "falling": preload("res://assets/sasho/sasho-falling.png"),
-    },
-    "valka": {
-        "idle":    preload("res://assets/valka/valka-idle.png"),
-        "walk":    preload("res://assets/valka/valka-walk.png"),
-        "jump":    preload("res://assets/valka/valka-jump.png"),
-        "punch":   preload("res://assets/valka/valka-punch.png"),
-        "kick":    preload("res://assets/valka/valka-kick.png"),
-        "falling": preload("res://assets/valka/valka-fall.png"),
-    },
-    "veli": {
-        "idle":    preload("res://assets/veli/veli-walk.png"),
-        "walk":    preload("res://assets/veli/veli-walk.png"),
-        "jump":    preload("res://assets/veli/veli-jump.png"),
-        "punch":   preload("res://assets/veli/veli-punch.png"),
-        "kick":    preload("res://assets/veli/veli-kick.png"),
-        "falling": preload("res://assets/veli/veli-falling.png"),
-    },
-}
+func _load_tex(n: String) -> Dictionary:
+	match n:
+		"asen":
+			return {
+				"idle":    load("res://assets/asen/asen-idle.png"),
+				"walk":    load("res://assets/asen/asen-walk.png"),
+				"jump":    load("res://assets/asen/asen-jump.png"),
+				"punch":   load("res://assets/asen/asen-punch.png"),
+				"falling": load("res://assets/asen/asen-falling.png"),
+			}
+		"djolev":
+			return {
+				"idle":    load("res://assets/djolev/djolev-idle.png"),
+				"walk":    load("res://assets/djolev/djolev-walk.png"),
+				"jump":    load("res://assets/djolev/djolev-jump.png"),
+				"punch":   load("res://assets/djolev/djolev-punch.png"),
+				"falling": load("res://assets/djolev/djolev-falling.png"),
+			}
+		"siyana":
+			return {
+				"idle":    load("res://assets/siyana/siyana-idle.png"),
+				"walk":    load("res://assets/siyana/siyana-walk.png"),
+				"jump":    load("res://assets/siyana/siyana-jump.png"),
+				"punch":   load("res://assets/siyana/siyana-punch.png"),
+				"kick":    load("res://assets/siyana/siyana-finger.png"),
+				"falling": load("res://assets/siyana/siyana-falling.png"),
+			}
+		"crunch":
+			return {
+				"idle":    load("res://assets/crunch/crunch-idle.png"),
+				"walk":    load("res://assets/crunch/crunch-walk.png"),
+				"jump":    load("res://assets/crunch/crunch-punch.png"),
+				"punch":   load("res://assets/crunch/crunch-punch.png"),
+				"kick":    load("res://assets/crunch/crunch-kick.png"),
+				"flykick": load("res://assets/crunch/crunch-flykick.png"),
+				"falling": load("res://assets/crunch/crunch-falling.png"),
+			}
+		"dani":
+			return {
+				"idle":    load("res://assets/dani/dani-idle.png"),
+				"walk":    load("res://assets/dani/dani-walk.png"),
+				"jump":    load("res://assets/dani/dani-jump.png"),
+				"punch":   load("res://assets/dani/dani-punch.png"),
+				"kick":    load("res://assets/dani/dani-kick.png"),
+				"falling": load("res://assets/dani/dani-fall.png"),
+			}
+		"drago":
+			return {
+				"idle":    load("res://assets/drago/drago-idle.png"),
+				"walk":    load("res://assets/drago/drago-walk.png"),
+				"jump":    load("res://assets/drago/drago-jump.png"),
+				"punch":   load("res://assets/drago/drago-punch.png"),
+				"kick":    load("res://assets/drago/drago-kick.png"),
+				"falling": load("res://assets/drago/drago-fall.png"),
+			}
+		"rado":
+			return {
+				"idle":    load("res://assets/rado/rado-idle.png"),
+				"walk":    load("res://assets/rado/rado-walk.png"),
+				"jump":    load("res://assets/rado/rado-jumping.png"),
+				"punch":   load("res://assets/rado/rado-punch.png"),
+				"kick":    load("res://assets/rado/rado-kick.png"),
+				"falling": load("res://assets/rado/rado-falling.png"),
+			}
+		"yavor":
+			return {
+				"idle":    load("res://assets/yavor/yavor-idle.png"),
+				"walk":    load("res://assets/yavor/yavor-walk.png"),
+				"jump":    load("res://assets/yavor/yavor-jump.png"),
+				"punch":   load("res://assets/yavor/yavor-punch.png"),
+				"kick":    load("res://assets/yavor/yavor-kick.png"),
+				"falling": load("res://assets/yavor/yavor-falling.png"),
+			}
+		"5q":
+			return {
+				"idle":    load("res://assets/5q/5q-idle.png"),
+				"walk":    load("res://assets/5q/5q-walk.png"),
+				"jump":    load("res://assets/5q/5q-jump.png"),
+				"punch":   load("res://assets/5q/5q-punch.png"),
+				"kick":    load("res://assets/5q/5q-kick.png"),
+				"falling": load("res://assets/5q/5q-falls.png"),
+			}
+		"bobe":
+			return {
+				"idle":    load("res://assets/bobe/bobe-idle.png"),
+				"walk":    load("res://assets/bobe/bobe-walk.png"),
+				"jump":    load("res://assets/bobe/bobe-jump.png"),
+				"punch":   load("res://assets/bobe/bobe-punch.png"),
+				"kick":    load("res://assets/bobe/bobe-kick.png"),
+				"falling": load("res://assets/bobe/bobe-falling.png"),
+			}
+		"ipman":
+			return {
+				"idle":       load("res://assets/ipman/ipman-idle.png"),
+				"walk":       load("res://assets/ipman/ipman-walk.png"),
+				"jump":       load("res://assets/ipman/ipman-jump.png"),
+				"punch":      load("res://assets/ipman/ipman-punch.png"),
+				"kick":       load("res://assets/ipman/ipman-kick.png"),
+				"falling":    load("res://assets/ipman/ipman-fall.png"),
+				"getting_up": load("res://assets/ipman/ipman-getting-up.png"),
+			}
+		"itso":
+			return {
+				"idle":    load("res://assets/itso/itso-idle.png"),
+				"walk":    load("res://assets/itso/itso-walk.png"),
+				"jump":    load("res://assets/itso/itso-jump.png"),
+				"punch":   load("res://assets/itso/itso-punch.png"),
+				"kick":    load("res://assets/itso/itso-kick.png"),
+				"falling": load("res://assets/itso/itso-falling.png"),
+			}
+		"sasho":
+			return {
+				"idle":    load("res://assets/sasho/sasho-idle.png"),
+				"walk":    load("res://assets/sasho/sasho-walk.png"),
+				"jump":    load("res://assets/sasho/sasho-jump.png"),
+				"punch":   load("res://assets/sasho/sasho-punch.png"),
+				"kick":    load("res://assets/sasho/sasho-kick.png"),
+				"falling": load("res://assets/sasho/sasho-falling.png"),
+			}
+		"valka":
+			return {
+				"idle":    load("res://assets/valka/valka-idle.png"),
+				"walk":    load("res://assets/valka/valka-walk.png"),
+				"jump":    load("res://assets/valka/valka-jump.png"),
+				"punch":   load("res://assets/valka/valka-punch.png"),
+				"kick":    load("res://assets/valka/valka-kick.png"),
+				"falling": load("res://assets/valka/valka-fall.png"),
+			}
+		"veli":
+			return {
+				"idle":    load("res://assets/veli/veli-walk.png"),
+				"walk":    load("res://assets/veli/veli-walk.png"),
+				"jump":    load("res://assets/veli/veli-jump.png"),
+				"punch":   load("res://assets/veli/veli-punch.png"),
+				"kick":    load("res://assets/veli/veli-kick.png"),
+				"falling": load("res://assets/veli/veli-falling.png"),
+			}
+	return {}
 
 
 var p1_def = null
@@ -247,7 +262,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	spr.scale = Vector2(SW / 128.0, SH / 128.0)
 	add_child(spr)
 
-	var tex: Dictionary = _TEX[def.char_name]
+	var tex: Dictionary = _load_tex(def.char_name)
 
 	var slot: String = "p1" if i == 0 else "p2"
 	var start_pos: Vector2 = active_level.start_p1 if i == 0 else active_level.start_p2
