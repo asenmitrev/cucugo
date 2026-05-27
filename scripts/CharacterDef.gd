@@ -22,6 +22,9 @@ export var anim_idle: float = 0.18
 export var anim_walk: float = 0.10
 export var anim_jump: float = 0.14
 export var anim_dead: float = 0.20
+export var anim_getting_up: float = 0.12
+
+export var lives: int = 1
 
 export var action_skill1: String = ""
 export var action_skill2: String = ""

@@ -122,6 +122,7 @@ const _TEX := {
         "punch":   preload("res://assets/ipman/ipman-punch.png"),
         "kick":    preload("res://assets/ipman/ipman-kick.png"),
         "falling": preload("res://assets/ipman/ipman-fall.png"),
+        "getting_up": preload("res://assets/ipman/ipman-getting-up.png"),
     },
     "itso": {
         "idle":    preload("res://assets/itso/itso-idle.png"),
@@ -258,6 +259,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
 		"tex": tex, "spr": spr,
+		"lives": def.lives, "stunned": false, "getting_up": false, "getting_up_t": 0.0, "invulnerable": false,
 		"skill_cds":      [0.0, 0.0, 0.0],
 		"casting_skill":  -1,
 		"cast_t":          0.0,
@@ -277,6 +279,8 @@ func _anim_spd(def: CharacterDef, state: String) -> float:
 		"walk":  return def.anim_walk
 		"jump":  return def.anim_jump
 		"dead":  return def.anim_dead
+		"stunned": return def.anim_dead
+		"getting_up": return def.anim_getting_up
 	return 0.15
 
 
@@ -316,6 +320,10 @@ func _process(delta: float) -> void:
 		var key: String
 		if p["dead"]:
 			key = "falling"
+		elif p.get("stunned", false):
+			key = "falling"
+		elif p.get("getting_up", false):
+			key = "getting_up"
 		elif p["casting_skill"] >= 0:
 			var _sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
 			var _sk: Resource = _sk_defs[p["casting_skill"]]
@@ -327,6 +335,10 @@ func _process(delta: float) -> void:
 		spr.flip_h = not p["right"]
 
 		var cur_state: String = p["state"]
+		if p.get("stunned", false):
+			cur_state = "stunned"
+		elif p.get("getting_up", false):
+			cur_state = "getting_up"
 		if cur_state != p["prev_state"]:
 			p["prev_state"] = cur_state
 			p["anim_t"] = 0.0
@@ -341,7 +353,7 @@ func _process(delta: float) -> void:
 				frame_dur = csk.anim_cast
 		if p["anim_t"] >= frame_dur:
 			p["anim_t"] -= frame_dur
-			if p["dead"]:
+			if p["dead"] or p.get("stunned", false) or p.get("getting_up", false):
 				p["anim_frame"] = min(int(p["anim_frame"]) + 1, 3)
 			else:
 				p["anim_frame"] = (int(p["anim_frame"]) + 1) % 4
@@ -350,6 +362,9 @@ func _process(delta: float) -> void:
 		if p["dead"]:
 			spr.modulate.a = max(0.0, 1.0 - p["death_t"] * 0.75)
 			spr.rotation += 3.0 * PI * dt * min(p["death_t"], 0.8)
+		elif p.get("stunned", false) or p.get("getting_up", false):
+			spr.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			spr.rotation = 0.0
 		elif p["casting_skill"] >= 0:
 			spr.modulate = Color(1.2, 1.2, 1.5, 1.0)
 		else:
@@ -379,6 +394,54 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["death_t"] += dt
 		return
 
+	if p["stunned"]:
+		p["casting_skill"] = -1
+		p["active_effects"] = []
+		p["vel"].y += GRAV * dt
+		p["pos"] += p["vel"] * dt
+		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
+		p["death_t"] += dt
+		_collide_plats(p)
+		if p["on_gnd"]:
+			p["stunned"] = false
+			p["getting_up"] = true
+			p["getting_up_t"] = 0.0
+			p["vel"] = Vector2.ZERO
+			p["anim_t"] = 0.0
+			p["anim_frame"] = 0
+		if p["pos"].y > H + 100.0:
+			p["dead"] = true
+			p["stunned"] = false
+			p["invulnerable"] = false
+			p["death_t"] = 0.0
+			p["anim_frame"] = 0
+			p["anim_t"] = 0.0
+		return
+
+	if p["getting_up"]:
+		p["casting_skill"] = -1
+		p["active_effects"] = []
+		p["getting_up_t"] += dt
+		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
+		p["vel"].y += GRAV * dt
+		p["pos"] += p["vel"] * dt
+		_collide_plats(p)
+		if p["getting_up_t"] >= p["def"].anim_getting_up * 4.0:
+			p["getting_up"] = false
+			p["invulnerable"] = false
+			p["death_t"] = 0.0
+			p["anim_t"] = 0.0
+			p["anim_frame"] = 0
+			p["state"] = "idle"
+		if p["pos"].y > H + 100.0:
+			p["dead"] = true
+			p["getting_up"] = false
+			p["invulnerable"] = false
+			p["death_t"] = 0.0
+			p["anim_frame"] = 0
+			p["anim_t"] = 0.0
+		return
+
 	# Tick skill cooldowns — drain faster while walking if def says so
 	var cd_mult: float = def.walk_cd_rate if p["state"] == "walk" else 1.0
 	for k in 3:
@@ -397,20 +460,35 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae)
-		if not ae["hit"] and not o["dead"]:
+		if not ae["hit"] and not o["dead"] and not o.get("invulnerable", false):
 			var odef: CharacterDef = o["def"]
 			var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
 			var eff_rect: Rect2 = ae["rect"]
 			if eff_rect.intersects(o_rect):
 				ae["hit"] = true
-				o["dead"] = true
-				o["death_t"] = 0.0
-				o["anim_frame"] = 0
-				o["anim_t"] = 0.0
-				var dir: float = 1.0 if p["right"] else -1.0
-				o["vel"] = Vector2(dir * 380.0, -440.0)
 				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
 				impacts.append({"pos": hit_pos, "age": 0.0})
+				if ae["skill"].hit_trigger_cooldowns:
+					var oskills: Array = [o["def"].skill1, o["def"].skill2, o["def"].skill3]
+					for k in 3:
+						if oskills[k] != null:
+							o["skill_cds"][k] = oskills[k].cooldown
+				if ae["skill"].hit_kills:
+					var dir: float = 1.0 if p["right"] else -1.0
+					if o["lives"] > 1:
+						o["lives"] -= 1
+						o["stunned"] = true
+						o["invulnerable"] = true
+						o["death_t"] = 0.0
+						o["anim_frame"] = 0
+						o["anim_t"] = 0.0
+						o["vel"] = Vector2(dir * 380.0, -440.0)
+					else:
+						o["dead"] = true
+						o["death_t"] = 0.0
+						o["anim_frame"] = 0
+						o["anim_t"] = 0.0
+						o["vel"] = Vector2(dir * 380.0, -440.0)
 
 		var csk = ae["child_skill"]
 		if csk != null and ae["skill"].child_spawn_interval > 0.0:
@@ -717,7 +795,7 @@ func _draw() -> void:
 	# Skill cooldown dots (3 dots above each player)
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
-		if p.empty() or p["dead"]:
+		if p.empty() or p["dead"] or p.get("stunned", false) or p.get("getting_up", false):
 			continue
 		var pos: Vector2 = p["pos"]
 		for k in 3:

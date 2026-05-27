@@ -22,6 +22,9 @@ export var effect_gravity: float = 0.0
 export var bounce_coefficient: float = 0.0
 export var effect_turnaround: bool = false
 
+export var hit_kills: bool = true
+export var hit_trigger_cooldowns: bool = false
+
 export var child_skill_path: String = ""
 export var child_spawn_interval: float = 0.0
 export var child_spawn_limit: int = 0
