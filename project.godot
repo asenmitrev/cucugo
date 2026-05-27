@@ -15,12 +15,18 @@ _global_script_classes=[ {
 "path": "res://scripts/CharacterDef.gd"
 }, {
 "base": "Resource",
+"class": "LevelDef",
+"language": "GDScript",
+"path": "res://scripts/LevelDef.gd"
+}, {
+"base": "Resource",
 "class": "SkillDef",
 "language": "GDScript",
 "path": "res://scripts/SkillDef.gd"
 } ]
 _global_script_class_icons={
 "CharacterDef": "",
+"LevelDef": "",
 "SkillDef": ""
 }
 

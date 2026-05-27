@@ -1,0 +1,20 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/LevelDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+level_name = "Volcanic Crater"
+bg_top = Color( 0.14, 0.04, 0.03, 1 )
+bg_bottom = Color( 0.22, 0.08, 0.02, 1 )
+bg_split = 0.5
+plat_fill = Color( 0.32, 0.12, 0.06, 1 )
+plat_highlight = Color( 0.85, 0.35, 0.08, 1 )
+plat_shadow = Color( 0.5, 0.18, 0.05, 1 )
+plat_dark = Color( 0, 0, 0, 0.3 )
+star_seed = 256
+star_color = Color( 1, 0.6, 0.15, 0.55 )
+star_count = 20
+start_p1 = Vector2( 120, 280 )
+start_p2 = Vector2( 580, 280 )
+platforms_str = "0,430,800,20|60,350,180,14|560,350,180,14|180,280,140,14|480,280,140,14|300,210,200,14|100,160,100,14|600,160,100,14|350,90,100,14"

@@ -6,15 +6,16 @@ const GRAV := 900.0
 const SW := 90.0
 const SH := 90.0
 
-const P1_START := Vector2(140.0, 300.0)
-const P2_START := Vector2(570.0, 300.0)
-
-const PLATS := [
-	[0.0,   400.0, 800.0, 50.0],
-	[80.0,  305.0, 165.0, 16.0],
-	[555.0, 305.0, 165.0, 16.0],
-	[315.0, 220.0, 170.0, 16.0],
-]
+# --- Level system ---
+const LEVEL_CLASSIC = preload("res://resources/levels/classic.tres")
+const LEVEL_SKYSCRAPER = preload("res://resources/levels/skyscraper.tres")
+const LEVEL_CRATER = preload("res://resources/levels/crater.tres")
+const LEVEL_FROST = preload("res://resources/levels/frost_bridge.tres")
+const LEVEL_COLISEUM = preload("res://resources/levels/coliseum.tres")
+const _levels = [LEVEL_CLASSIC, LEVEL_SKYSCRAPER, LEVEL_CRATER, LEVEL_FROST, LEVEL_COLISEUM]
+var active_level = null
+var _prev_level_idx = -1
+var _level_flash_t = 0.0
 
 
 var ASEN_DEF   = preload("res://resources/asen.tres")
@@ -171,16 +172,39 @@ var _lbl_p2: Label
 var _lbl_winner: Label
 var _lbl_restart: Label
 var _lbl_controls: Label
+var _lbl_level: Label
+
+
+func _pick_level() -> void:
+	var idx: int = 0
+	if _levels.size() > 1:
+		idx = randi() % _levels.size()
+		while idx == _prev_level_idx:
+			idx = randi() % _levels.size()
+		_prev_level_idx = idx
+	else:
+		idx = 0
+	active_level = _levels[idx]
+	_level_flash_t = 2.5
+	if _lbl_level != null:
+		_lbl_level.text = active_level.level_name
 
 
 func _ready() -> void:
 	OS.window_fullscreen = true
 	MenuManager.locked = false
+	_pick_level()
+
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
 	var _p1: CharacterDef = p1_def if p1_def != null else ASEN_DEF
 	var _p2: CharacterDef = p2_def if p2_def != null else DJOLEV_DEF
+	_lbl_level = _make_lbl(active_level.level_name, Vector2(0, 8), Color(0.55, 0.55, 0.7, 1))
+	_lbl_level.rect_size = Vector2(W / 2.2, 30)
+	_lbl_level.rect_scale = Vector2(2.2, 2.2)
+	_lbl_level.align = Label.ALIGN_CENTER
+
 	_lbl_p1 = _make_lbl(_p1.display_name, Vector2(18, 8), _p1.label_color)
 	_lbl_p2 = _make_lbl(_p2.display_name, Vector2(680, 8), _p2.label_color)
 	_lbl_controls = _make_lbl(
@@ -198,7 +222,7 @@ func _ready() -> void:
 	_lbl_restart.align = Label.ALIGN_CENTER
 	_lbl_restart.visible = false
 
-	for lbl in [_lbl_p1, _lbl_p2, _lbl_controls, _lbl_winner, _lbl_restart]:
+	for lbl in [_lbl_p1, _lbl_p2, _lbl_controls, _lbl_winner, _lbl_restart, _lbl_level]:
 		ui.add_child(lbl)
 
 	_init_player(0, _p1)
@@ -225,9 +249,10 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	var tex: Dictionary = _TEX[def.char_name]
 
 	var slot: String = "p1" if i == 0 else "p2"
+	var start_pos: Vector2 = active_level.start_p1 if i == 0 else active_level.start_p2
 	pl[i] = {
 		"def": def,
-		"name": def.display_name, "pos": P1_START if i == 0 else P2_START, "vel": Vector2.ZERO,
+		"name": def.display_name, "pos": start_pos, "vel": Vector2.ZERO,
 		"right": i == 0, "on_gnd": false,
 		"state": "idle",
 		"dead": false, "death_t": 0.0,
@@ -257,6 +282,10 @@ func _anim_spd(def: CharacterDef, state: String) -> float:
 
 func _process(delta: float) -> void:
 	var dt := min(delta, 0.1)
+
+	# Level flash countdown
+	if _level_flash_t > 0.0:
+		_level_flash_t = max(0.0, _level_flash_t - dt)
 
 	if game_over:
 		restart_t += dt
@@ -469,7 +498,8 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 
 func _collide_plats(p: Dictionary) -> void:
 	p["on_gnd"] = false
-	for plat in PLATS:
+	var plats: Array = active_level._get_platforms()
+	for plat in plats:
 		var px: float = plat[0]
 		var py: float = plat[1]
 		var pw: float = plat[2]
@@ -488,7 +518,8 @@ func _collide_plats(p: Dictionary) -> void:
 
 func _collide_effect_plats(ae: Dictionary) -> void:
 	var rect: Rect2 = ae["rect"]
-	for plat in PLATS:
+	var plats: Array = active_level._get_platforms()
+	for plat in plats:
 		var px: float = plat[0]
 		var py: float = plat[1]
 		var pw: float = plat[2]
@@ -515,6 +546,7 @@ func _end_game(text: String) -> void:
 
 
 func _restart_round() -> void:
+	_pick_level()
 	# Remove old sprites
 	for i in [0, 1]:
 		if pl[i].has("spr"):
@@ -536,25 +568,41 @@ func _restart_round() -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, W, H), Color(0.07, 0.08, 0.16))
-	draw_rect(Rect2(0, H * 0.6, W, H * 0.4), Color(0.10, 0.12, 0.22))
+	var lev: Resource = active_level
+	var bg_top: Color = lev.bg_top
+	var bg_bottom: Color = lev.bg_bottom
+	var split_y: float = H * lev.bg_split
 
-	for i in range(28):
-		var sx := fmod(float(i * 137 + 29), 780.0) + 10.0
-		var sy := fmod(float(i * 97 + 13), 185.0) + 8.0
+	# Background
+	draw_rect(Rect2(0, 0, W, split_y), bg_top)
+	draw_rect(Rect2(0, split_y, W, H - split_y), bg_bottom)
+
+	# Stars (deterministic from level seed)
+	var seedd: int = lev.star_seed
+	var star_col: Color = lev.star_color
+	var star_cnt: int = lev.star_count
+	for i in range(star_cnt):
+		var sx := fmod(float(i * 137 + seedd), 780.0) + 10.0
+		var sy := fmod(float(i * 97 + seedd * 3), float(split_y - 20.0)) + 8.0
 		var sz := 2.0 if i % 3 == 0 else 1.0
-		draw_rect(Rect2(sx, sy, sz, sz), Color(1, 1, 1, 0.45))
+		draw_rect(Rect2(sx, sy, sz, sz), star_col)
 
-	for plat in PLATS:
+	# Platforms
+	var plats: Array = lev._get_platforms()
+	var pf: Color = lev.plat_fill
+	var ph: Color = lev.plat_highlight
+	var ps: Color = lev.plat_shadow
+	var pd: Color = lev.plat_dark
+	for plat in plats:
 		var px: float = plat[0]
 		var py: float = plat[1]
 		var pw: float = plat[2]
-		var ph: float = plat[3]
-		draw_rect(Rect2(px + 4, py + 4, pw, ph), Color(0, 0, 0, 0.22))
-		draw_rect(Rect2(px, py, pw, ph), Color(0.18, 0.12, 0.32))
-		draw_rect(Rect2(px, py, pw, 5), Color(0.42, 0.35, 0.55))
-		draw_rect(Rect2(px, py, 3, ph), Color(0.30, 0.22, 0.44))
-		draw_rect(Rect2(px + pw - 3, py, 3, ph), Color(0.30, 0.22, 0.44))
+		var pheight: float = plat[3]
+		draw_rect(Rect2(px + 4, py + 4, pw, pheight), pd)
+		draw_rect(Rect2(px, py, pw, pheight), pf)
+		draw_rect(Rect2(px, py, pw, 5), ph)
+		draw_rect(Rect2(px, py, 3, pheight), ps)
+		draw_rect(Rect2(px + pw - 3, py, 3, pheight), ps)
 
 	# Active skill effect hitboxes
 	for i in [0, 1]:
@@ -610,5 +658,12 @@ func _draw() -> void:
 
 	if game_over:
 		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.58))
+
+	# Level transition flash
+	if _level_flash_t > 0.0:
+		var flash_alpha: float = min(1.0, _level_flash_t)
+		draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.4 * flash_alpha))
+		draw_rect(Rect2(0, 0, W, 60), Color(0, 0, 0, 0.6 * flash_alpha))
+		draw_rect(Rect2(0, H - 60, W, 60), Color(0, 0, 0, 0.6 * flash_alpha))
 
 	MenuManager.draw_overlay(self)
