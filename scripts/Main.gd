@@ -224,7 +224,7 @@ func _ready() -> void:
 	_lbl_p1 = _make_lbl(_p1.display_name, Vector2(18, 8), _p1.label_color)
 	_lbl_p2 = _make_lbl(_p2.display_name, Vector2(680, 8), _p2.label_color)
 	_lbl_controls = _make_lbl(
-		"ASEN: A/D move  W jump  R/F/V skills        DJOLEV: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu",
+		"%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1.display_name, _p2.display_name],
 		Vector2(8, 432), Color(0.35, 0.35, 0.45))
 	_lbl_winner = _make_lbl("", Vector2(0, 168), Color.white)
 	_lbl_winner.rect_size = Vector2(W / 2.8, 40)
@@ -733,6 +733,7 @@ func _restart_round() -> void:
 	var _p2_def: CharacterDef = pl[1]["def"] if pl[1].has("def") and pl[1]["def"] != null else DJOLEV_DEF
 	_init_player(0, _p1_def)
 	_init_player(1, _p2_def)
+	_lbl_controls.text = "%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1_def.display_name, _p2_def.display_name]
 
 
 func _draw() -> void:
