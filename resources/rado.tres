@@ -15,6 +15,7 @@ action_right = ""
 action_jump = ""
 speed = 220.0
 jump_vel = -520.0
+walk_cd_rate = 1.0
 body_w = 36.0
 body_h = 80.0
 body_offset_x = 22.0

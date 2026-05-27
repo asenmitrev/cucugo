@@ -10,6 +10,7 @@ export var action_jump: String = ""
 
 export var speed: float = 210.0
 export var jump_vel: float = -530.0
+export var walk_cd_rate: float = 1.0
 
 # Body hitbox rect within the 90×90 sprite cell
 export var body_w: float = 90.0

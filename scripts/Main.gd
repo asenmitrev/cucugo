@@ -379,10 +379,11 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["death_t"] += dt
 		return
 
-	# Tick skill cooldowns
+	# Tick skill cooldowns — drain faster while walking if def says so
+	var cd_mult: float = def.walk_cd_rate if p["state"] == "walk" else 1.0
 	for k in 3:
 		if p["skill_cds"][k] > 0.0:
-			p["skill_cds"][k] = max(0.0, p["skill_cds"][k] - dt)
+			p["skill_cds"][k] = max(0.0, p["skill_cds"][k] - dt * cd_mult)
 
 	# Tick active effects and check for hits
 	var live_effects := []
@@ -394,6 +395,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		if ae["skill"].effect_gravity > 0.0 and ae["vy"] >= 0.0:
 			_collide_effect_plats(ae)
 		ae["rotation"] += ae["rotation_speed"] * dt
+		if ae["skill"].effect_turnaround:
+			_maybe_turnaround_effect(ae)
 		if not ae["hit"] and not o["dead"]:
 			var odef: CharacterDef = o["def"]
 			var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
@@ -577,6 +580,35 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 			return
 
 
+func _maybe_turnaround_effect(ae: Dictionary) -> void:
+	var rect: Rect2 = ae["rect"]
+	var dx: float = ae["dx"]
+	if dx == 0.0:
+		return
+	# Screen edge reversal
+	if (dx < 0.0 and rect.position.x <= 0.0) or (dx > 0.0 and rect.end.x >= W):
+		ae["dx"] = -dx
+		ae["facing"] = -ae["facing"]
+		return
+	# Platform edge reversal — only when effect just landed (vy reset to 0 this frame)
+	if ae["vy"] > 5.0:
+		return
+	var plats: Array = active_level._get_platforms()
+	var bottom_y: float = rect.end.y
+	var lead_x: float = rect.end.x if dx > 0.0 else rect.position.x
+	var supported: bool = false
+	for plat in plats:
+		var px: float = plat[0]
+		var py: float = plat[1]
+		var pw: float = plat[2]
+		if lead_x > px and lead_x < px + pw and abs(bottom_y - py) < 15.0:
+			supported = true
+			break
+	if not supported:
+		ae["dx"] = -ae["dx"]
+		ae["facing"] = -ae["facing"]
+
+
 func _end_game(text: String) -> void:
 	if game_over:
 		return
@@ -689,9 +721,18 @@ func _draw() -> void:
 			continue
 		var pos: Vector2 = p["pos"]
 		for k in 3:
+			var dot_center: Vector2 = Vector2(pos.x + k * 14.0 + 4.0, pos.y - 8.0)
 			var ready: bool = p["skill_cds"][k] <= 0.0
 			var dot_col: Color = Color(0.2, 0.85, 0.25) if ready else Color(0.45, 0.18, 0.08)
-			draw_circle(Vector2(pos.x + k * 14.0 + 4.0, pos.y - 8.0), 4.0, dot_col)
+			draw_circle(dot_center, 4.0, dot_col)
+			if not ready:
+				var skill_ref: SkillDef = [p["def"].skill1, p["def"].skill2, p["def"].skill3][k]
+				var max_cd: float = skill_ref.cooldown
+				if max_cd > 0.0:
+					var ratio: float = p["skill_cds"][k] / max_cd
+					var filled_angle: float = (1.0 - ratio) * TAU
+					if filled_angle > 0.0:
+						draw_arc(dot_center, 4.0, -PI * 0.5, -PI * 0.5 + filled_angle, 24, Color(0.2, 0.85, 0.25), 2.0)
 
 	for imp in impacts:
 		var a: float = 1.0 - float(imp["age"]) / 0.55
