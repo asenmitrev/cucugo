@@ -792,19 +792,23 @@ func _draw() -> void:
 		draw_rect(Rect2(bx, by, 40.0, 5.0), Color(0.2, 0.2, 0.2, 0.7))
 		draw_rect(Rect2(bx, by, 40.0 * progress, 5.0), Color(1.0, 0.9, 0.2, 0.9))
 
-	# Skill cooldown dots (3 dots above each player)
+	# Skill cooldown dots (1 dot per skill, gray for empty slots)
 	for i in [0, 1]:
 		var p: Dictionary = pl[i]
 		if p.empty() or p["dead"] or p.get("stunned", false) or p.get("getting_up", false):
 			continue
 		var pos: Vector2 = p["pos"]
+		var sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
 		for k in 3:
 			var dot_center: Vector2 = Vector2(pos.x + k * 14.0 + 4.0, pos.y - 8.0)
+			if sk_defs[k] == null:
+				draw_circle(dot_center, 4.0, Color(0.3, 0.3, 0.35))
+				continue
 			var ready: bool = p["skill_cds"][k] <= 0.0
 			var dot_col: Color = Color(0.2, 0.85, 0.25) if ready else Color(0.45, 0.18, 0.08)
 			draw_circle(dot_center, 4.0, dot_col)
 			if not ready:
-				var skill_ref: SkillDef = [p["def"].skill1, p["def"].skill2, p["def"].skill3][k]
+				var skill_ref: SkillDef = sk_defs[k]
 				var max_cd: float = skill_ref.cooldown
 				if max_cd > 0.0:
 					var ratio: float = p["skill_cds"][k] / max_cd
