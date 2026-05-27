@@ -386,6 +386,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 	# Tick active effects and check for hits
 	var live_effects := []
+	var new_effects := []
 	for ae in p["active_effects"]:
 		ae["t"] += dt
 		ae["vy"] += ae["skill"].effect_gravity * dt
@@ -407,9 +408,34 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				o["vel"] = Vector2(dir * 380.0, -440.0)
 				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
 				impacts.append({"pos": hit_pos, "age": 0.0})
+
+		var csk = ae["child_skill"]
+		if csk != null and ae["skill"].child_spawn_interval > 0.0:
+			ae["child_t"] += dt
+			var limit: int = ae["skill"].child_spawn_limit
+			var under_limit: bool = (limit == 0 or ae["child_spawn_count"] < limit)
+			if ae["child_t"] >= ae["skill"].child_spawn_interval and under_limit:
+				ae["child_t"] -= ae["skill"].child_spawn_interval
+				ae["child_spawn_count"] += 1
+				var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
+				var cx: float = center.x - csk.effect_width * 0.5
+				var cy: float = center.y - csk.effect_height * 0.5
+				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), ae["facing"]))
+
+		if csk != null and ae.get("ground_hit", false):
+			var limit: int = ae["skill"].child_spawn_limit
+			var count: int = limit if limit > 0 else 1
+			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
+			for j in range(count):
+				var child_dir: float = ae["facing"] if j % 2 == 0 else -ae["facing"]
+				var cx: float = center.x - csk.effect_width * 0.5
+				var cy: float = center.y - csk.effect_height * 0.5
+				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), child_dir))
+			ae["ground_hit"] = false
+
 		if ae["t"] < ae["skill"].effect_duration:
 			live_effects.append(ae)
-	p["active_effects"] = live_effects
+	p["active_effects"] = live_effects + new_effects
 
 	# Tick cast timer and activate when ready
 	if p["casting_skill"] >= 0:
@@ -466,7 +492,6 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 
 func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
-	var def: CharacterDef = p["def"]
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:
@@ -474,26 +499,37 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 	else:
 		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
 	var hy: float = pos.y + sk.effect_offset_y
-	var ae_tex: Texture = null
-	if sk.effect_sprite_path != "":
-		ae_tex = load(sk.effect_sprite_path) as Texture
 	var dir: float = 1.0 if p["right"] else -1.0
-	p["active_effects"].append({
-		"skill":          sk,
-		"t":              0.0,
-		"rect":           Rect2(hx, hy, sk.effect_width, sk.effect_height),
-		"hit":            false,
-		"tex":            ae_tex,
-		"dx":             sk.effect_dx * dir,
-		"dy":             sk.effect_dy,
-		"vy":             0.0,
-		"rotation":       0.0,
-		"rotation_speed": deg2rad(sk.effect_rotation_speed),
-		"facing":         dir,
-	})
+	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir))
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
+
+
+func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictionary:
+	var ae_tex: Texture = null
+	if sk.effect_sprite_path != "":
+		ae_tex = load(sk.effect_sprite_path) as Texture
+	var child_sk = null
+	if sk.child_skill_path != "":
+		child_sk = load(sk.child_skill_path)
+	return {
+		"skill":             sk,
+		"t":                 0.0,
+		"rect":              Rect2(spawn_pos, Vector2(sk.effect_width, sk.effect_height)),
+		"hit":               false,
+		"tex":               ae_tex,
+		"dx":                sk.effect_dx * dir,
+		"dy":                0.0,
+		"vy":                sk.effect_dy,
+		"rotation":          0.0,
+		"rotation_speed":    deg2rad(sk.effect_rotation_speed),
+		"facing":            dir,
+		"child_skill":       child_sk,
+		"child_t":           0.0,
+		"child_spawn_count": 0,
+		"ground_hit":        false,
+	}
 
 
 func _collide_plats(p: Dictionary) -> void:
@@ -529,8 +565,13 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 				and bottom >= py \
 				and bottom <= py + 35.0:
 			ae["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
-			ae["vy"] = 0.0
-			ae["dx"] = 0.0
+			var bc: float = ae["skill"].bounce_coefficient
+			if bc > 0.0:
+				ae["vy"] = -abs(ae["vy"]) * bc
+			else:
+				ae["vy"] = 0.0
+			if ae["skill"].spawn_on_impact:
+				ae["ground_hit"] = true
 			return
 
 
