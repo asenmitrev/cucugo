@@ -1,0 +1,30 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Egg"
+cast_time = 0.0
+cooldown = 0.0
+anim_cast = 0.0
+cast_anim = ""
+effect_width = 15.0
+effect_height = 15.0
+effect_offset_x = 0.0
+effect_offset_y = 0.0
+effect_duration = 2.5
+effect_color = Color( 1, 1, 0.7, 1 )
+effect_sprite_path = "res://assets/crunch/egg.png"
+effect_dx = 0.0
+effect_dy = 0.0
+effect_rotation_speed = 0.0
+effect_gravity = 550.0
+bounce_coefficient = 0.0
+effect_turnaround = false
+hit_kills = true
+hit_trigger_cooldowns = false
+child_skill_path = ""
+child_spawn_interval = 0.0
+child_spawn_limit = 0
+spawn_on_impact = false

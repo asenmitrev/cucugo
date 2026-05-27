@@ -1,0 +1,30 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/SkillDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+display_name = "Chicken Throw"
+cast_time = 0.35
+cooldown = 5.0
+anim_cast = 0.12
+cast_anim = "punch"
+effect_width = 50.0
+effect_height = 50.0
+effect_offset_x = 55.0
+effect_offset_y = 10.0
+effect_duration = 5.0
+effect_color = Color( 1, 0.85, 0.4, 1 )
+effect_sprite_path = "res://assets/crunch/chicken.png"
+effect_dx = 60.0
+effect_dy = 80.0
+effect_rotation_speed = 0.0
+effect_gravity = 250.0
+bounce_coefficient = 0.0
+effect_turnaround = true
+hit_kills = true
+hit_trigger_cooldowns = false
+child_skill_path = "res://resources/skills/crunch_egg_drop.tres"
+child_spawn_interval = 1.5
+child_spawn_limit = 0
+spawn_on_impact = false
