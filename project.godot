@@ -58,6 +58,10 @@ window/stretch/mode="viewport"
 window/stretch/aspect="expand"
 window/fullscreen=true
 
+[global]
+
+window=true
+
 [gui]
 
 common/drop_mouse_on_gui_input_disabled=true
