@@ -3,7 +3,7 @@
 [ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
 [ext_resource path="res://resources/skills/yavor_smoke_bomb.tres" type="Resource" id=2]
 [ext_resource path="res://resources/skills/yavor_cigarette_flick.tres" type="Resource" id=3]
-[ext_resource path="res://resources/skills/yavor_chill_dash.tres" type="Resource" id=4]
+[ext_resource path="res://resources/skills/yavor_cig_drop.tres" type="Resource" id=4]
 
 [resource]
 script = ExtResource( 1 )
@@ -11,7 +11,7 @@ display_name = "YAVOR"
 char_name = "yavor"
 label_color = Color( 0.5, 0.7, 0.7, 1 )
 speed = 205.0
-jump_vel = -525.0
+jump_vel = -650.0
 walk_cd_rate = 1.0
 body_w = 40.0
 body_h = 82.0

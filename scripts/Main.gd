@@ -549,11 +549,24 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		if p["cast_t"] >= sk.cast_time:
 			_activate_skill(p, i, skill_idx, sk)
 
+	# Passive skills: auto-fire off cooldown, no input
+	var _sk_all: Array = [def.skill1, def.skill2, def.skill3]
+	for k in 3:
+		var _psk = _sk_all[k]
+		if _psk != null and _psk.is_passive and p["skill_cds"][k] <= 0.0:
+			var _phx: float
+			if p["right"]:
+				_phx = p["pos"].x + _psk.effect_offset_x
+			else:
+				_phx = p["pos"].x + SW - _psk.effect_offset_x - _psk.effect_width
+			p["active_effects"].append(_make_effect_dict(_psk, Vector2(_phx, p["pos"].y + _psk.effect_offset_y), 1.0 if p["right"] else -1.0))
+			p["skill_cds"][k] = _psk.cooldown
+
 	if p["casting_skill"] < 0:
 		var skill_actions: Array = [p["action_skill1"], p["action_skill2"], p["action_skill3"]]
 		var skill_defs: Array = [def.skill1, def.skill2, def.skill3]
 		for k in 3:
-			if skill_defs[k] != null and skill_actions[k] != "" \
+			if skill_defs[k] != null and not skill_defs[k].is_passive and skill_actions[k] != "" \
 					and p["skill_cds"][k] <= 0.0 \
 					and Input.is_action_just_pressed(skill_actions[k]):
 				p["casting_skill"] = k
