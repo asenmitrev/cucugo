@@ -207,6 +207,10 @@ func _pick_level() -> void:
 
 
 func _ready() -> void:
+	if OS.get_name() == "X11":
+		OS.window_borderless = true
+		OS.window_position = Vector2(0, 0)
+		OS.window_size = OS.get_screen_size()
 	OS.window_fullscreen = true
 	MenuManager.locked = false
 	_pick_level()

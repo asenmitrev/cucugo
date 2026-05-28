@@ -39,6 +39,10 @@ var _font: Font
 
 
 func _ready() -> void:
+	if OS.get_name() == "X11":
+		OS.window_borderless = true
+		OS.window_position = Vector2(0, 0)
+		OS.window_size = OS.get_screen_size()
 	OS.window_fullscreen = true
 	MenuManager.locked = false
 	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF, FIVEQ_DEF, BOBE_DEF, IPMAN_DEF, ITSO_DEF, SASHO_DEF, VALKA_DEF, VELI_DEF]
