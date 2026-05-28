@@ -9,14 +9,19 @@ extends Node
 #   - A required ES action is absent from the config
 
 const ACTION_MAP := {
-	"left":  [["p1_left", 0],   ["p2_left", 1]],
-	"right": [["p1_right", 0],  ["p2_right", 1]],
-	"up":    [["p1_jump", 0],   ["p2_jump", 1]],
-	"b":     [["p1_skill1", 0], ["p2_skill1", 1]],
-	"x":     [["p1_skill2", 0], ["p2_skill2", 1]],
-	"y":     [["p1_skill3", 0], ["p2_skill3", 1]],
-	"start": [["start", 0],     ["start", 1]],
+	"left":            [["p1_left", 0],   ["p2_left", 1]],
+	"right":           [["p1_right", 0],  ["p2_right", 1]],
+	"up":              [["p1_jump", 0],   ["p2_jump", 1]],
+	"leftanalogleft":  [["p1_left", 0],   ["p2_left", 1]],
+	"leftanalogright": [["p1_right", 0],  ["p2_right", 1]],
+	"leftanalogup":    [["p1_jump", 0],   ["p2_jump", 1]],
+	"b":               [["p1_skill1", 0], ["p2_skill1", 1]],
+	"x":               [["p1_skill2", 0], ["p2_skill2", 1]],
+	"y":               [["p1_skill3", 0], ["p2_skill3", 1]],
+	"start":           [["start", 0],     ["start", 1]],
 }
+
+var _configs: Array = []
 
 const HAT_TO_BUTTON := {
 	1: 12,
@@ -39,26 +44,37 @@ func _ready() -> void:
 		return
 
 	print("ControllerMapper: loading ", config_path)
-	var configs := _parse_es_config(config_path)
-	if configs.empty():
+	_configs = _parse_es_config(config_path)
+	if _configs.empty():
 		print("ControllerMapper: no valid inputConfig entries found")
 		return
 
+	Input.connect("joy_connection_changed", self, "_on_joy_connected")
+
 	for device in [0, 1]:
-		var joy_guid: String = Input.get_joy_guid(device)
-		var joy_name: String = Input.get_joy_name(device)
-		if joy_guid == "" and joy_name == "":
-			continue
+		_remap_device(device)
 
-		var cfg = _find_matching_config(configs, joy_guid, joy_name)
-		if cfg == null:
-			print("ControllerMapper: no ES config match for device ", device,
-				  " (", joy_name, " / ", joy_guid, "), keeping defaults")
-			continue
 
-		print("ControllerMapper: applying ES config for device ", device,
-			  " matched to '", cfg.device_name, "'")
-		_apply_config(cfg.inputs, device)
+func _on_joy_connected(device: int, connected: bool) -> void:
+	if connected and device <= 1:
+		_remap_device(device)
+
+
+func _remap_device(device: int) -> void:
+	var joy_guid: String = Input.get_joy_guid(device)
+	var joy_name: String = Input.get_joy_name(device)
+	if joy_guid == "" and joy_name == "":
+		return
+
+	var cfg = _find_matching_config(_configs, joy_guid, joy_name)
+	if cfg == null:
+		print("ControllerMapper: no ES config match for device ", device,
+			  " (", joy_name, " / ", joy_guid, "), keeping defaults")
+		return
+
+	print("ControllerMapper: applying ES config for device ", device,
+		  " matched to '", cfg.device_name, "'")
+	_apply_config(cfg.inputs, device)
 
 
 func _find_config_file() -> String:
@@ -188,7 +204,7 @@ func _replace_joypad_event(action: String, new_event: InputEvent) -> void:
 	var to_remove := []
 	for ev in InputMap.get_action_list(action):
 		if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
-			if ev.device == new_event.device:
+			if ev.device == new_event.device or ev.device == -1:
 				to_remove.append(ev)
 	for ev in to_remove:
 		InputMap.action_erase_event(action, ev)

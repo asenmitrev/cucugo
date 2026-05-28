@@ -91,7 +91,7 @@ func _input(event: InputEvent) -> void:
 				_ctrl_nav(-1)
 			elif ev.button_index == JOY_DPAD_DOWN:
 				_ctrl_nav(1)
-			elif event.is_action_pressed("ui_cancel"):
+			elif event.is_action_pressed("start"):
 				_ctrl_toggle()
 			elif controls_sel == CTRL_ACTIONS.size():
 				_ctrl_reset_defaults()
@@ -134,8 +134,15 @@ func _input(event: InputEvent) -> void:
 				main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
 			elif ev.button_index == JOY_SONY_X or ev.button_index == JOY_XBOX_A:
 				_main_menu_confirm()
-			elif event.is_action_pressed("ui_cancel"):
+			elif event.is_action_pressed("start"):
 				show_main_menu = false
+		elif event is InputEventJoypadMotion:
+			var ev: InputEventJoypadMotion = event as InputEventJoypadMotion
+			if ev.axis == JOY_AXIS_1 or ev.axis == 7:
+				if ev.axis_value < -0.5:
+					main_menu_sel = wrapi(main_menu_sel - 1, 0, MAIN_MENU_ITEMS.size())
+				elif ev.axis_value > 0.5:
+					main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
 		_request_update()
 		return
 
@@ -212,9 +219,9 @@ func _ctrl_reset_defaults() -> void:
 
 func _update_hint() -> void:
 	if controls_sel == CTRL_ACTIONS.size():
-		_hint_text = "↑↓ navigate   Enter/any button to reset   Esc/B close"
+		_hint_text = "↑↓ navigate   Enter/any button to reset   Esc/Start close"
 	else:
-		_hint_text = "↑↓ navigate   any key/button to bind   Esc/B close"
+		_hint_text = "↑↓ navigate   any key/button to bind   Esc/Start close"
 
 
 func _setup_default_controls() -> void:

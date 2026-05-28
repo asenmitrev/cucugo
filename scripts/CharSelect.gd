@@ -48,38 +48,35 @@ func _ready() -> void:
 	tmp.queue_free()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		var kev := event as InputEventKey
-		if not kev.pressed or kev.echo:
-			return
-	elif event is InputEventJoypadButton:
-		var jev := event as InputEventJoypadButton
-		if not jev.pressed:
-			return
-	else:
+func _process(_delta: float) -> void:
+	if MenuManager.is_open():
 		return
 
-	get_tree().set_input_as_handled()
+	var changed := false
 
-	if event.is_action_pressed("p1_left") and not _cs_confirmed[0]:
-		_cs_sel[0] = wrapi(_cs_sel[0] - 1, 0, _all_defs.size())
-		update()
-	elif event.is_action_pressed("p1_right") and not _cs_confirmed[0]:
-		_cs_sel[0] = wrapi(_cs_sel[0] + 1, 0, _all_defs.size())
-		update()
-	elif event.is_action_pressed("p1_jump"):
+	if not _cs_confirmed[0]:
+		if Input.is_action_just_pressed("p1_left"):
+			_cs_sel[0] = wrapi(_cs_sel[0] - 1, 0, _all_defs.size())
+			changed = true
+		elif Input.is_action_just_pressed("p1_right"):
+			_cs_sel[0] = wrapi(_cs_sel[0] + 1, 0, _all_defs.size())
+			changed = true
+	if Input.is_action_just_pressed("p1_jump"):
 		_cs_confirmed[0] = not _cs_confirmed[0]
-		update()
+		changed = true
 
-	if event.is_action_pressed("p2_left") and not _cs_confirmed[1]:
-		_cs_sel[1] = wrapi(_cs_sel[1] - 1, 0, _all_defs.size())
-		update()
-	elif event.is_action_pressed("p2_right") and not _cs_confirmed[1]:
-		_cs_sel[1] = wrapi(_cs_sel[1] + 1, 0, _all_defs.size())
-		update()
-	elif event.is_action_pressed("p2_jump"):
+	if not _cs_confirmed[1]:
+		if Input.is_action_just_pressed("p2_left"):
+			_cs_sel[1] = wrapi(_cs_sel[1] - 1, 0, _all_defs.size())
+			changed = true
+		elif Input.is_action_just_pressed("p2_right"):
+			_cs_sel[1] = wrapi(_cs_sel[1] + 1, 0, _all_defs.size())
+			changed = true
+	if Input.is_action_just_pressed("p2_jump"):
 		_cs_confirmed[1] = not _cs_confirmed[1]
+		changed = true
+
+	if changed:
 		update()
 
 	if _cs_confirmed[0] and _cs_confirmed[1]:
