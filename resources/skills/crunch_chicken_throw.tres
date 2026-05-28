@@ -28,3 +28,6 @@ child_skill_path = "res://resources/skills/crunch_egg_drop.tres"
 child_spawn_interval = 1.5
 child_spawn_limit = 0
 spawn_on_impact = false
+player_launch_x = 0.0
+player_launch_y = 0.0
+player_launch_duration = 0.0

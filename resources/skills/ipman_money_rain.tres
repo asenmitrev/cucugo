@@ -28,3 +28,6 @@ child_skill_path = "res://resources/skills/ipman_little_money.tres"
 child_spawn_interval = 0.0
 child_spawn_limit = 8
 spawn_on_impact = true
+player_launch_x = 0.0
+player_launch_y = 0.0
+player_launch_duration = 0.0

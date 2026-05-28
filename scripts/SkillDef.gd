@@ -29,3 +29,8 @@ export var child_skill_path: String = ""
 export var child_spawn_interval: float = 0.0
 export var child_spawn_limit: int = 0
 export var spawn_on_impact: bool = false
+
+# When non-zero, set player velocity on skill activation (direction-aware for x)
+export var player_launch_x: float = 0.0
+export var player_launch_y: float = 0.0
+export var player_launch_duration: float = 0.0

@@ -283,6 +283,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"casting_skill":  -1,
 		"cast_t":          0.0,
 		"active_effects": [],
+		"launch_t":        0.0,
 		"action_left":   slot + "_left",
 		"action_right":  slot + "_right",
 		"action_jump":   slot + "_jump",
@@ -560,7 +561,9 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				p["anim_frame"] = 0
 				break
 
-	if Input.is_action_pressed(p["action_left"]):
+	if p["launch_t"] > 0.0:
+		p["launch_t"] = max(0.0, p["launch_t"] - dt)
+	elif Input.is_action_pressed(p["action_left"]):
 		p["vel"].x = -def.speed
 		p["right"] = false
 	elif Input.is_action_pressed(p["action_right"]):
@@ -606,6 +609,11 @@ func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
+	if sk.player_launch_x != 0.0:
+		p["vel"].x = dir * sk.player_launch_x
+		p["launch_t"] = sk.player_launch_duration
+	if sk.player_launch_y != 0.0:
+		p["vel"].y = sk.player_launch_y
 
 
 func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictionary:
