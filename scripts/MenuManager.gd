@@ -241,35 +241,34 @@ func _input_map_has_action(aname: String) -> bool:
 
 
 func _apply_event_to_action(action: String, ev: InputEvent, device: int) -> void:
-	var events: Array = _ctrl_bindings.get(action, [])
-
-	if ev is InputEventKey:
-		# Keyboard: replace all keyboard events for this action
-		var new_events := []
-		for e in events:
-			if e is InputEventKey:
-				InputMap.action_erase_event(action, e)
+	# Exclusive binding: remove this event from every other remappable action first.
+	for ca in CTRL_ACTIONS:
+		var other: String = ca["action"]
+		if other == action:
+			continue
+		var other_events: Array = _ctrl_bindings.get(other, [])
+		var kept := []
+		for e in other_events:
+			var conflict := false
+			if ev is InputEventJoypadButton and e is InputEventJoypadButton:
+				conflict = (e as InputEventJoypadButton).button_index == (ev as InputEventJoypadButton).button_index \
+					and (e.device == device or device == -1 or e.device == -1)
+			elif ev is InputEventKey and e is InputEventKey:
+				conflict = (e as InputEventKey).scancode == (ev as InputEventKey).scancode
+			if conflict:
+				InputMap.action_erase_event(other, e)
 			else:
-				new_events.append(e)
-		events = new_events
-		InputMap.action_add_event(action, ev)
-		events.append(ev)
+				kept.append(e)
+		_ctrl_bindings[other] = kept
 
-	elif ev is InputEventJoypadButton:
-		# Joypad: replace only the event for this specific device
-		var new_events := []
-		for e in events:
-			if e is InputEventJoypadButton and e.device == device:
-				InputMap.action_erase_event(action, e)
-			else:
-				new_events.append(e)
-		events = new_events
-		var joy_ev: InputEventJoypadButton = ev
-		joy_ev.device = device
-		InputMap.action_add_event(action, joy_ev)
-		events.append(joy_ev)
+	# One binding per action: clear everything currently on this action.
+	for e in _ctrl_bindings.get(action, []):
+		InputMap.action_erase_event(action, e)
 
-	_ctrl_bindings[action] = events
+	if ev is InputEventJoypadButton:
+		(ev as InputEventJoypadButton).device = device
+	InputMap.action_add_event(action, ev)
+	_ctrl_bindings[action] = [ev]
 
 
 func _get_event_device(ev: InputEvent) -> int:
@@ -355,21 +354,10 @@ func _ctrl_load() -> void:
 
 # Called from ControllerMapper to register a joypad binding without erasing other devices
 func register_joypad_binding(action: String, ev: InputEvent) -> void:
-	var events: Array = _ctrl_bindings.get(action, [])
-	var device: int = ev.device if ev.has("device") else -1
-
-	# Remove any existing joypad event for this device
-	var new_events := []
-	for e in events:
-		if e is InputEventJoypadButton and e.device == device:
-			InputMap.action_erase_event(action, e)
-		else:
-			new_events.append(e)
-	events = new_events
-
+	for e in _ctrl_bindings.get(action, []):
+		InputMap.action_erase_event(action, e)
 	InputMap.action_add_event(action, ev)
-	events.append(ev)
-	_ctrl_bindings[action] = events
+	_ctrl_bindings[action] = [ev]
 
 
 # ── Drawing ──────────────────────────────────────────────────────
