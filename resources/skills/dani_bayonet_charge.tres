@@ -31,3 +31,4 @@ spawn_on_impact = false
 player_launch_x = 0.0
 player_launch_y = 0.0
 player_launch_duration = 0.0
+teleport_behind = false

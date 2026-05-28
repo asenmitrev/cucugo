@@ -82,12 +82,13 @@ func _load_tex(n: String) -> Dictionary:
 			}
 		"drago":
 			return {
-				"idle":    load("res://assets/drago/drago-idle.png"),
-				"walk":    load("res://assets/drago/drago-walk.png"),
-				"jump":    load("res://assets/drago/drago-jump.png"),
-				"punch":   load("res://assets/drago/drago-punch.png"),
-				"kick":    load("res://assets/drago/drago-kick.png"),
-				"falling": load("res://assets/drago/drago-fall.png"),
+				"idle":     load("res://assets/drago/drago-idle.png"),
+				"walk":     load("res://assets/drago/drago-walk.png"),
+				"jump":     load("res://assets/drago/drago-jump.png"),
+				"punch":    load("res://assets/drago/drago-punch.png"),
+				"kick":     load("res://assets/drago/drago-kick.png"),
+				"falling":  load("res://assets/drago/drago-fall.png"),
+				"flypunch": load("res://assets/drago/drago-flypunch.png"),
 			}
 		"rado":
 			return {
@@ -546,7 +547,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		var skill_idx: int = p["casting_skill"]
 		var sk: Resource = ([def.skill1, def.skill2, def.skill3] as Array)[skill_idx]
 		if p["cast_t"] >= sk.cast_time:
-			_activate_skill(p, skill_idx, sk)
+			_activate_skill(p, i, skill_idx, sk)
 
 	if p["casting_skill"] < 0:
 		var skill_actions: Array = [p["action_skill1"], p["action_skill2"], p["action_skill3"]]
@@ -596,7 +597,22 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["anim_t"] = 0.0
 
 
-func _activate_skill(p: Dictionary, skill_idx: int, sk: Resource) -> void:
+func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> void:
+	if sk.teleport_behind:
+		var o: Dictionary = pl[1 - i]
+		if p["pos"].x < o["pos"].x:
+			p["pos"].x = o["pos"].x + 80.0
+			p["right"] = false
+		else:
+			p["pos"].x = o["pos"].x - 80.0
+			p["right"] = true
+		p["pos"].y = o["pos"].y
+		p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
+		p["skill_cds"][skill_idx] = sk.cooldown
+		p["casting_skill"] = -1
+		p["cast_t"] = 0.0
+		return
+
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:

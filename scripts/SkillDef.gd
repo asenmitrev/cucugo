@@ -34,3 +34,5 @@ export var spawn_on_impact: bool = false
 export var player_launch_x: float = 0.0
 export var player_launch_y: float = 0.0
 export var player_launch_duration: float = 0.0
+
+export var teleport_behind: bool = false
