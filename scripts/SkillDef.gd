@@ -48,3 +48,5 @@ export var pull_force: float = 0.0
 
 # When true, kill the caster if this effect expires without landing a hit
 export var self_kill_if_no_hit: bool = false
+
+export var is_transform: bool = false

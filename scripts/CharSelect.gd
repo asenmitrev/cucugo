@@ -15,6 +15,7 @@ var FIVEQ_DEF  = preload("res://resources/5q.tres")
 var BOBE_DEF   = preload("res://resources/bobe.tres")
 var IPMAN_DEF  = preload("res://resources/ipman.tres")
 var ITSO_DEF   = preload("res://resources/itso.tres")
+var ITSO5Q_DEF = preload("res://resources/itso5q.tres")
 var SASHO_DEF  = preload("res://resources/sasho.tres")
 var VALKA_DEF  = preload("res://resources/valka.tres")
 var VELI_DEF   = preload("res://resources/veli.tres")
@@ -45,7 +46,7 @@ func _ready() -> void:
 		OS.window_size = OS.get_screen_size()
 	OS.window_fullscreen = true
 	MenuManager.locked = false
-	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF, FIVEQ_DEF, BOBE_DEF, IPMAN_DEF, ITSO_DEF, SASHO_DEF, VALKA_DEF, VELI_DEF]
+	_all_defs = [ASEN_DEF, DJOLEV_DEF, SIYANA_DEF, CRUNCH_DEF, DANI_DEF, DRAGO_DEF, RADO_DEF, YAVOR_DEF, FIVEQ_DEF, BOBE_DEF, IPMAN_DEF, ITSO_DEF, SASHO_DEF, VALKA_DEF, VELI_DEF, ITSO5Q_DEF]
 	var tmp := Label.new()
 	add_child(tmp)
 	_font = tmp.get_font("font")

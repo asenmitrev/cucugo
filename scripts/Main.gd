@@ -30,6 +30,7 @@ var FIVEQ_DEF  = preload("res://resources/5q.tres")
 var BOBE_DEF   = preload("res://resources/bobe.tres")
 var IPMAN_DEF  = preload("res://resources/ipman.tres")
 var ITSO_DEF   = preload("res://resources/itso.tres")
+var ITSO5Q_DEF = preload("res://resources/itso5q.tres")
 var SASHO_DEF  = preload("res://resources/sasho.tres")
 var VALKA_DEF  = preload("res://resources/valka.tres")
 var VELI_DEF   = preload("res://resources/veli.tres")
@@ -291,6 +292,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"action_skill1": slot + "_skill1",
 		"action_skill2": slot + "_skill2",
 		"action_skill3": slot + "_skill3",
+		"original_def":  def,
 	}
 
 
@@ -640,6 +642,20 @@ func _apply_pull_effects(dt: float) -> void:
 
 
 func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> void:
+	if sk.is_transform:
+		var next_def: CharacterDef = p["def"].alt_form if p["def"].alt_form != null else p["original_def"]
+		p["def"] = next_def
+		p["tex"] = _load_tex(next_def.char_name)
+		p["skill_cds"][1] = 0.0
+		p["skill_cds"][2] = 0.0
+		p["skill_cds"][skill_idx] = sk.cooldown
+		var lbl: Label = _lbl_p1 if i == 0 else _lbl_p2
+		lbl.text = next_def.display_name
+		lbl.add_color_override("font_color", next_def.label_color)
+		p["casting_skill"] = -1
+		p["cast_t"] = 0.0
+		return
+
 	if sk.teleport_behind:
 		var o: Dictionary = pl[1 - i]
 		if p["pos"].x < o["pos"].x:
@@ -814,9 +830,9 @@ func _restart_round() -> void:
 	MenuManager.locked = false
 	_lbl_winner.visible = false
 	_lbl_restart.visible = false
-	# Re-init players with their current defs
-	var _p1_def: CharacterDef = pl[0]["def"] if pl[0].has("def") and pl[0]["def"] != null else ASEN_DEF
-	var _p2_def: CharacterDef = pl[1]["def"] if pl[1].has("def") and pl[1]["def"] != null else DJOLEV_DEF
+	# Re-init players with their original (pre-transform) defs
+	var _p1_def: CharacterDef = pl[0].get("original_def", pl[0].get("def", ASEN_DEF))
+	var _p2_def: CharacterDef = pl[1].get("original_def", pl[1].get("def", DJOLEV_DEF))
 	_init_player(0, _p1_def)
 	_init_player(1, _p2_def)
 	_lbl_controls.text = "%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1_def.display_name, _p2_def.display_name]

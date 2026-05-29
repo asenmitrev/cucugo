@@ -37,3 +37,4 @@ is_passive = false
 self_cd_reduce_on_cast = 0.0
 pull_force = 0.0
 self_kill_if_no_hit = false
+is_transform = false

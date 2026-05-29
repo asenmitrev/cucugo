@@ -23,6 +23,8 @@ export var anim_getting_up: float = 0.12
 
 export var lives: int = 1
 
+export(Resource) var alt_form = null
+
 export(Resource) var skill1 = null
 export(Resource) var skill2 = null
 export(Resource) var skill3 = null
