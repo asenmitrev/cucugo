@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Money Rain"
 cast_time = 0.3
-cooldown = 2.5
+cooldown = 5.0
 anim_cast = 0.1
 cast_anim = "punch"
 effect_width = 40.0
@@ -26,7 +26,7 @@ hit_kills = true
 hit_trigger_cooldowns = false
 child_skill_path = "res://resources/skills/ipman_little_money.tres"
 child_spawn_interval = 0.0
-child_spawn_limit = 8
+child_spawn_limit = 4
 spawn_on_impact = true
 player_launch_x = 0.0
 player_launch_y = 0.0
