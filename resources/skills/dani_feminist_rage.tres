@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource( 1 )
 display_name = "Feminist Rage"
-cast_time = 0.35
+cast_time = 2.0
 cooldown = 7.0
 anim_cast = 0.1
 cast_anim = "kick"
@@ -37,3 +37,4 @@ is_passive = false
 self_cd_reduce_on_cast = 0.0
 pull_force = 0.0
 self_kill_if_no_hit = true
+is_transform = false

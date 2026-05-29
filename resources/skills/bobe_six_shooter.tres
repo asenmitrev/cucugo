@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Six-Shooter"
 cast_time = 0.2
-cooldown = 1.2
+cooldown = 0.2
 anim_cast = 0.09
 cast_anim = "kick"
 effect_width = 0.0
