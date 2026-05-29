@@ -505,12 +505,17 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae)
+		if ae["hit"] and ae["skill"].hit_interval > 0.0:
+			ae["hit_t"] = max(0.0, ae["hit_t"] - dt)
+			if ae["hit_t"] <= 0.0:
+				ae["hit"] = false
 		if not ae["hit"] and not o["dead"] and not o.get("invulnerable", false):
 			var odef: CharacterDef = o["def"]
 			var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
 			var eff_rect: Rect2 = ae["rect"]
 			if eff_rect.intersects(o_rect):
 				ae["hit"] = true
+				ae["hit_t"] = ae["skill"].hit_interval
 				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
 				impacts.append({"pos": hit_pos, "age": 0.0})
 				if ae["skill"].hit_trigger_cooldowns:
@@ -797,6 +802,7 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictiona
 		"t":                 0.0,
 		"rect":              Rect2(spawn_pos, Vector2(sk.effect_width, sk.effect_height)),
 		"hit":               false,
+		"hit_t":             0.0,
 		"tex":               ae_tex,
 		"dx":                sk.effect_dx * dir,
 		"dy":                0.0,

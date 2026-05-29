@@ -65,3 +65,7 @@ export var self_invulnerable_duration: float = 0.0
 
 # When true, caster turns invisible for 4 seconds if this skill's hit kills/stuns the opponent.
 export var hit_self_invisible: bool = false
+
+# When > 0, effect can hit again this many seconds after the previous hit (repeating trap).
+# When 0 (default), the effect hits once and is done.
+export var hit_interval: float = 0.0
