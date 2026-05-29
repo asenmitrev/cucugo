@@ -279,7 +279,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
 		"tex": tex, "spr": spr,
-		"lives": def.lives, "stunned": false, "getting_up": false, "getting_up_t": 0.0, "invulnerable": false, "self_invuln_t": 0.0,
+		"lives": def.lives, "stunned": false, "getting_up": false, "getting_up_t": 0.0, "invulnerable": false, "self_invuln_t": 0.0, "invisible": false, "invisible_t": 0.0,
 		"skill_cds":      [0.0, 0.0, 0.0],
 		"casting_skill":  -1,
 		"cast_t":          0.0,
@@ -391,6 +391,9 @@ func _process(delta: float) -> void:
 		elif p.get("stunned", false) or p.get("getting_up", false):
 			spr.modulate = Color(1.0, 1.0, 1.0, 1.0)
 			spr.rotation = 0.0
+		elif p.get("invisible", false):
+			spr.modulate = Color(1.0, 1.0, 1.0, 0.1)
+			spr.rotation = 0.0
 		elif p["casting_skill"] >= 0:
 			spr.modulate = Color(1.2, 1.2, 1.5, 1.0)
 		else:
@@ -415,6 +418,8 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["casting_skill"] = -1
 		p["active_effects"] = []
 		p["stomp_active"] = false
+		p["invisible"] = false
+		p["invisible_t"] = 0.0
 		p["vel"].y += GRAV * dt
 		p["pos"] += p["vel"] * dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
@@ -482,6 +487,12 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		if p["self_invuln_t"] <= 0.0 and not p.get("getting_up", false):
 			p["invulnerable"] = false
 
+	# Tick invisibility
+	if p.get("invisible_t", 0.0) > 0.0:
+		p["invisible_t"] = max(0.0, p["invisible_t"] - dt)
+		if p["invisible_t"] <= 0.0:
+			p["invisible"] = false
+
 	# Tick active effects and check for hits
 	var live_effects := []
 	var new_effects := []
@@ -523,6 +534,9 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 						o["anim_frame"] = 0
 						o["anim_t"] = 0.0
 						o["vel"] = Vector2(dir * 380.0, -440.0)
+					if ae["skill"].hit_self_invisible:
+						p["invisible"] = true
+						p["invisible_t"] = 4.0
 
 		var csk = ae["child_skill"]
 		if csk != null and ae["skill"].child_spawn_interval > 0.0:

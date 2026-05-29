@@ -62,3 +62,6 @@ export var is_stomp: bool = false
 
 # When > 0, caster becomes invulnerable for this many seconds on skill activation.
 export var self_invulnerable_duration: float = 0.0
+
+# When true, caster turns invisible for 4 seconds if this skill's hit kills/stuns the opponent.
+export var hit_self_invisible: bool = false

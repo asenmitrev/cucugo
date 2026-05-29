@@ -1,9 +1,9 @@
 [gd_resource type="Resource" load_steps=5 format=2]
 
 [ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
-[ext_resource path="res://resources/skills/sasho_mosh_pit.tres" type="Resource" id=2]
-[ext_resource path="res://resources/skills/sasho_air_guitar.tres" type="Resource" id=3]
-[ext_resource path="res://resources/skills/sasho_backstage_pass.tres" type="Resource" id=4]
+[ext_resource path="res://resources/skills/sasho_trotinetka_toss.tres" type="Resource" id=2]
+[ext_resource path="res://resources/skills/sasho_ghost_punch.tres" type="Resource" id=3]
+[ext_resource path="res://resources/skills/sasho_dickpic_trap.tres" type="Resource" id=4]
 
 [resource]
 script = ExtResource( 1 )

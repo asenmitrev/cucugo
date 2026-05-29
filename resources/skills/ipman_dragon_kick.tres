@@ -41,3 +41,4 @@ is_transform = false
 spawn_behind_trap = false
 is_stomp = false
 self_invulnerable_duration = 0.0
+hit_self_invisible = false

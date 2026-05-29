@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Cupcake Toss"
 cast_time = 0.2
-cooldown = 1.2
+cooldown = 2.5
 anim_cast = 0.08
 cast_anim = "punch"
 effect_width = 30.0
@@ -41,3 +41,4 @@ is_transform = false
 spawn_behind_trap = false
 is_stomp = false
 self_invulnerable_duration = 0.0
+hit_self_invisible = false
