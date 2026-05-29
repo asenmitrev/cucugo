@@ -55,3 +55,10 @@ export var is_transform: bool = false
 # The ticket falls, lands, and stays until a player walks over it.
 # Randomly green (halve that player's cooldowns) or red (kill that player).
 export var spawn_behind_trap: bool = false
+
+# When true, launch caster upward and activate a stomp hitbox under their feet
+# while falling — kills opponent on contact (Mario stomp mechanic).
+export var is_stomp: bool = false
+
+# When > 0, caster becomes invulnerable for this many seconds on skill activation.
+export var self_invulnerable_duration: float = 0.0

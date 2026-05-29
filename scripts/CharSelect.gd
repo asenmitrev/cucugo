@@ -112,8 +112,8 @@ func _draw() -> void:
 	_draw_player_card(0)
 	_draw_player_card(1)
 
-	draw_string(_font, Vector2(20.0, H - 14.0), "P1: A/D select   W confirm", Color(0.5, 0.5, 0.65))
-	draw_string(_font, Vector2(W * 0.5 + 20.0, H - 14.0), "P2: ←/→ select   ↑ confirm", Color(0.5, 0.5, 0.65))
+	draw_string(_font, Vector2(20.0, H - 14.0), "P1: A/D select   W/A-btn confirm", Color(0.5, 0.5, 0.65))
+	draw_string(_font, Vector2(W * 0.5 + 20.0, H - 14.0), "P2: ←/→ select   ↑/A-btn confirm", Color(0.5, 0.5, 0.65))
 
 	MenuManager.draw_overlay(self)
 
@@ -154,5 +154,5 @@ func _draw_player_card(pi: int) -> void:
 	if confirmed:
 		draw_string(_font, Vector2(cx - 38.0, status_y), "CONFIRMED!", Color(0.3, 1.0, 0.4))
 	else:
-		var hint: String = "W to confirm" if pi == 0 else "↑ to confirm"
+		var hint: String = "W/A-btn confirm" if pi == 0 else "↑/A-btn confirm"
 		draw_string(_font, Vector2(cx - 46.0, status_y), hint, Color(0.5, 0.5, 0.65))

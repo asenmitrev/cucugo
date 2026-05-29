@@ -182,7 +182,7 @@ var impacts := []
 var trap_effects := []
 var game_over := false
 var restart_t: float = 0.0
-const RESTART_DELAY := 3.0
+const RESTART_DELAY := 1.0
 
 var _lbl_p1: Label
 var _lbl_p2: Label
@@ -279,11 +279,12 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
 		"tex": tex, "spr": spr,
-		"lives": def.lives, "stunned": false, "getting_up": false, "getting_up_t": 0.0, "invulnerable": false,
+		"lives": def.lives, "stunned": false, "getting_up": false, "getting_up_t": 0.0, "invulnerable": false, "self_invuln_t": 0.0,
 		"skill_cds":      [0.0, 0.0, 0.0],
 		"casting_skill":  -1,
 		"cast_t":          0.0,
 		"active_effects": [],
+		"stomp_active":    false,
 		"launch_t":        0.0,
 		"action_left":   slot + "_left",
 		"action_right":  slot + "_right",
@@ -413,6 +414,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	if p["dead"]:
 		p["casting_skill"] = -1
 		p["active_effects"] = []
+		p["stomp_active"] = false
 		p["vel"].y += GRAV * dt
 		p["pos"] += p["vel"] * dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
@@ -422,11 +424,12 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	if p["stunned"]:
 		p["casting_skill"] = -1
 		p["active_effects"] = []
+		p["stomp_active"] = false
 		p["vel"].y += GRAV * dt
 		p["pos"] += p["vel"] * dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
 		p["death_t"] += dt
-		_collide_plats(p)
+		_collide_plats(p, dt)
 		if p["on_gnd"]:
 			p["stunned"] = false
 			p["getting_up"] = true
@@ -450,7 +453,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
 		p["vel"].y += GRAV * dt
 		p["pos"] += p["vel"] * dt
-		_collide_plats(p)
+		_collide_plats(p, dt)
 		if p["getting_up_t"] >= p["def"].anim_getting_up * 4.0:
 			p["getting_up"] = false
 			p["invulnerable"] = false
@@ -472,6 +475,12 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	for k in 3:
 		if p["skill_cds"][k] > 0.0:
 			p["skill_cds"][k] = max(0.0, p["skill_cds"][k] - dt * cd_mult)
+
+	# Tick skill-granted invulnerability
+	if p.get("self_invuln_t", 0.0) > 0.0:
+		p["self_invuln_t"] = max(0.0, p["self_invuln_t"] - dt)
+		if p["self_invuln_t"] <= 0.0 and not p.get("getting_up", false):
+			p["invulnerable"] = false
 
 	# Tick active effects and check for hits
 	var live_effects := []
@@ -533,7 +542,7 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			var count: int = limit if limit > 0 else 1
 			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
 			for j in range(count):
-				var spread: float = lerp(-1.0, 1.0, float(j) / float(count - 1)) if count > 1 else 1.0
+				var spread: float = lerp(-1.0, 1.0, float(j) / float(count - 1)) if count > 1 else ae["facing"]
 				var child_dir: float = spread
 				var cx: float = center.x - csk.effect_width * 0.5
 				var cy: float = center.y - csk.effect_height * 0.5
@@ -583,6 +592,9 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 				p["cast_t"] = 0.0
 				p["anim_t"] = 0.0
 				p["anim_frame"] = 0
+				if skill_defs[k].self_invulnerable_duration > 0.0:
+					p["self_invuln_t"] = skill_defs[k].cast_time + skill_defs[k].self_invulnerable_duration
+					p["invulnerable"] = true
 				break
 
 	if p["launch_t"] > 0.0:
@@ -609,9 +621,44 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	else:
 		p["state"] = "idle"
 
-	_collide_plats(p)
+	# Stomp kill check must run BEFORE _collide_plats — the platform snap zeros vel.y and
+	# sets on_gnd on the same frame Yavor lands, which would skip the kill check otherwise.
+	if p.get("stomp_active", false) and p["vel"].y > 10.0 \
+			and not o["dead"] and not o.get("invulnerable", false):
+		var _stomp_pd: CharacterDef = p["def"]
+		var _stomp_od: CharacterDef = o["def"]
+		var _stomp_foot := Rect2(
+			p["pos"].x + _stomp_pd.body_offset_x,
+			p["pos"].y + _stomp_pd.body_offset_y + _stomp_pd.body_h - 12.0,
+			_stomp_pd.body_w, 15.0)
+		var _stomp_or := Rect2(o["pos"] + Vector2(_stomp_od.body_offset_x, _stomp_od.body_offset_y),
+			Vector2(_stomp_od.body_w, _stomp_od.body_h))
+		if _stomp_foot.intersects(_stomp_or):
+			p["stomp_active"] = false
+			impacts.append({"pos": _stomp_foot.position + _stomp_foot.size * 0.5, "age": 0.0})
+			p["vel"].y = -420.0
+			var _stomp_dir: float = 1.0 if p["right"] else -1.0
+			if o["lives"] > 1:
+				o["lives"] -= 1
+				o["stunned"] = true
+				o["invulnerable"] = true
+				o["death_t"] = 0.0
+				o["anim_frame"] = 0
+				o["anim_t"] = 0.0
+				o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+			else:
+				o["dead"] = true
+				o["death_t"] = 0.0
+				o["anim_frame"] = 0
+				o["anim_t"] = 0.0
+				o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+
+	_collide_plats(p, dt)
 	var _bdef: CharacterDef = p["def"]
 	p["pos"].x = clamp(p["pos"].x, -_bdef.body_offset_x, W - _bdef.body_offset_x - _bdef.body_w)
+
+	if p.get("stomp_active", false) and p["on_gnd"]:
+		p["stomp_active"] = false
 
 	if p["pos"].y > H + 100.0:
 		p["dead"] = true
@@ -644,6 +691,10 @@ func _apply_pull_effects(dt: float) -> void:
 
 
 func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> void:
+	if sk.self_invulnerable_duration > 0.0:
+		p["self_invuln_t"] = sk.self_invulnerable_duration
+		p["invulnerable"] = true
+
 	if sk.is_transform:
 		var next_def: CharacterDef = p["def"].alt_form if p["def"].alt_form != null else p["original_def"]
 		p["def"] = next_def
@@ -686,6 +737,14 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["cast_t"] = 0.0
 		return
 
+	if sk.is_stomp:
+		p["vel"].y = sk.player_launch_y
+		p["stomp_active"] = true
+		p["skill_cds"][skill_idx] = sk.cooldown
+		p["casting_skill"] = -1
+		p["cast_t"] = 0.0
+		return
+
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:
@@ -708,6 +767,8 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["launch_t"] = sk.player_launch_duration
 	if sk.player_launch_y != 0.0:
 		p["vel"].y = sk.player_launch_y
+		if sk.player_launch_y <= -750.0:
+			p["stomp_active"] = true
 
 
 func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictionary:
@@ -826,7 +887,7 @@ func _collide_trap_plats(trap: Dictionary) -> void:
 			return
 
 
-func _collide_plats(p: Dictionary) -> void:
+func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 	p["on_gnd"] = false
 	var plats: Array = active_level._get_platforms()
 	for plat in plats:
@@ -836,11 +897,13 @@ func _collide_plats(p: Dictionary) -> void:
 		var _pd: CharacterDef = p["def"]
 		var _bx: float = p["pos"].x + _pd.body_offset_x
 		var _by: float = p["pos"].y + _pd.body_offset_y
+		var bottom: float = _by + _pd.body_h
+		var prev_bottom: float = bottom - p["vel"].y * dt
 		if p["vel"].y >= 0.0 \
 				and _bx + _pd.body_w > px + 5.0 \
 				and _bx < px + pw - 5.0 \
-				and _by + _pd.body_h >= py \
-				and _by + _pd.body_h <= py + 30.0:
+				and bottom >= py \
+				and prev_bottom <= py + 5.0:
 			p["pos"].y = py - _pd.body_h - _pd.body_offset_y
 			p["vel"].y = 0.0
 			p["on_gnd"] = true
@@ -1044,6 +1107,19 @@ func _draw() -> void:
 					var filled_angle: float = (1.0 - ratio) * TAU
 					if filled_angle > 0.0:
 						draw_arc(dot_center, 4.0, -PI * 0.5, -PI * 0.5 + filled_angle, 24, Color(0.2, 0.85, 0.25), 2.0)
+
+	# Stomp foot hitbox glow — visible while falling with stomp active
+	for i in [0, 1]:
+		var p: Dictionary = pl[i]
+		if p.empty() or not p.get("stomp_active", false) or p["vel"].y <= 0.0:
+			continue
+		var _sdef: CharacterDef = p["def"]
+		var _sfr := Rect2(
+			p["pos"].x + _sdef.body_offset_x,
+			p["pos"].y + _sdef.body_offset_y + _sdef.body_h - 12.0,
+			_sdef.body_w, 15.0)
+		draw_rect(_sfr, Color(1.0, 0.35, 0.05, 0.45))
+		draw_rect(_sfr, Color(1.0, 0.7, 0.1, 0.95), false)
 
 	for imp in impacts:
 		var a: float = 1.0 - float(imp["age"]) / 0.55

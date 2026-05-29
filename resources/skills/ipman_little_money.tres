@@ -39,3 +39,4 @@ pull_force = 0.0
 self_kill_if_no_hit = false
 is_transform = false
 spawn_behind_trap = false
+is_stomp = false

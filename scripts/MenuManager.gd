@@ -231,6 +231,44 @@ func _setup_default_controls() -> void:
 		var ev := InputEventKey.new()
 		ev.scancode = DEFAULT_BINDS[action]
 		_apply_event_to_action(action, ev, -1)
+	_setup_joypad_movement()
+
+
+func _setup_joypad_movement() -> void:
+	# device 0 = P1, device 1 = P2
+	var dpad_mappings := [
+		["p1_left",  0, JOY_DPAD_LEFT],
+		["p1_right", 0, JOY_DPAD_RIGHT],
+		["p1_jump",  0, JOY_DPAD_UP],
+		["p1_jump",  0, JOY_SONY_X],
+		["p1_jump",  0, JOY_XBOX_A],
+		["p2_left",  1, JOY_DPAD_LEFT],
+		["p2_right", 1, JOY_DPAD_RIGHT],
+		["p2_jump",  1, JOY_DPAD_UP],
+		["p2_jump",  1, JOY_SONY_X],
+		["p2_jump",  1, JOY_XBOX_A],
+	]
+	for m in dpad_mappings:
+		var ev := InputEventJoypadButton.new()
+		ev.device = m[1]
+		ev.button_index = m[2]
+		ev.pressed = true
+		InputMap.action_add_event(m[0], ev)
+
+	var axis_mappings := [
+		["p1_left",  0, JOY_AXIS_0, -1.0],
+		["p1_right", 0, JOY_AXIS_0,  1.0],
+		["p1_jump",  0, JOY_AXIS_1, -1.0],
+		["p2_left",  1, JOY_AXIS_0, -1.0],
+		["p2_right", 1, JOY_AXIS_0,  1.0],
+		["p2_jump",  1, JOY_AXIS_1, -1.0],
+	]
+	for m in axis_mappings:
+		var ev := InputEventJoypadMotion.new()
+		ev.device = m[1]
+		ev.axis = m[2]
+		ev.axis_value = m[3]
+		InputMap.action_add_event(m[0], ev)
 
 
 func _input_map_has_action(aname: String) -> bool:
