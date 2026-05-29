@@ -179,6 +179,7 @@ var p2_def = null
 
 var pl := [{}, {}]
 var impacts := []
+var trap_effects := []
 var game_over := false
 var restart_t: float = 0.0
 const RESTART_DELAY := 3.0
@@ -325,6 +326,7 @@ func _process(delta: float) -> void:
 		return
 
 	_apply_pull_effects(dt)
+	_update_traps(dt)
 
 	for i in [0, 1]:
 		_update_player(i, 1 - i, dt)
@@ -691,6 +693,8 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	var hy: float = pos.y + sk.effect_offset_y
 	var dir: float = 1.0 if p["right"] else -1.0
 	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir))
+	if sk.spawn_behind_trap:
+		_spawn_lottery_trap(p, sk)
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
@@ -728,6 +732,96 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictiona
 		"child_spawn_count": 0,
 		"ground_hit":        false,
 	}
+
+
+func _spawn_lottery_trap(p: Dictionary, sk: Resource) -> void:
+	var tw: float = sk.effect_width
+	var th: float = sk.effect_height
+	var tx: float
+	if p["right"]:
+		tx = p["pos"].x - tw - 5.0
+	else:
+		tx = p["pos"].x + SW + 5.0
+	var ty: float = p["pos"].y + 10.0
+	var ae_tex: Texture = null
+	if sk.effect_sprite_path != "":
+		ae_tex = load(sk.effect_sprite_path) as Texture
+	trap_effects.append({
+		"type": "red" if randf() > 0.5 else "green",
+		"rect": Rect2(tx, ty, tw, th),
+		"vy": 0.0,
+		"tex": ae_tex,
+		"rotation": 0.0,
+		"rotation_speed": deg2rad(300.0),
+		"on_ground": false,
+	})
+
+
+func _update_traps(dt: float) -> void:
+	var TRAP_GRAV : float= 700.0
+	var keep := []
+	for trap in trap_effects:
+		if not trap["on_ground"]:
+			trap["vy"] += TRAP_GRAV * dt
+			trap["rect"] = Rect2(trap["rect"].position + Vector2(0.0, trap["vy"] * dt), trap["rect"].size)
+			_collide_trap_plats(trap)
+		if trap["on_ground"]:
+			trap["rotation_speed"] = lerp(trap["rotation_speed"], 0.0, 3.0 * dt)
+		trap["rotation"] += trap["rotation_speed"] * dt
+		if trap["rect"].position.y > H + 50.0:
+			continue
+		var hit_this_frame := false
+		for pi in [0, 1]:
+			var tp: Dictionary = pl[pi]
+			if tp.empty() or tp["dead"] or tp.get("invulnerable", false):
+				continue
+			var tpd: CharacterDef = tp["def"]
+			var tp_rect := Rect2(tp["pos"] + Vector2(tpd.body_offset_x, tpd.body_offset_y), Vector2(tpd.body_w, tpd.body_h))
+			if trap["rect"].intersects(tp_rect):
+				hit_this_frame = true
+				impacts.append({"pos": trap["rect"].position + trap["rect"].size * 0.5, "age": 0.0})
+				if trap["type"] == "green":
+					for k in 3:
+						tp["skill_cds"][k] = max(0.0, tp["skill_cds"][k] * 0.5)
+				else:
+					if tp["lives"] > 1:
+						tp["lives"] -= 1
+						tp["stunned"] = true
+						tp["invulnerable"] = true
+						tp["death_t"] = 0.0
+						tp["anim_frame"] = 0
+						tp["anim_t"] = 0.0
+						tp["vel"] = Vector2(0.0, -440.0)
+					else:
+						tp["dead"] = true
+						tp["death_t"] = 0.0
+						tp["anim_frame"] = 0
+						tp["anim_t"] = 0.0
+						tp["vel"] = Vector2(0.0, -200.0)
+				break
+		if not hit_this_frame:
+			keep.append(trap)
+	trap_effects = keep
+
+
+func _collide_trap_plats(trap: Dictionary) -> void:
+	var rect: Rect2 = trap["rect"]
+	if trap["vy"] < 0.0:
+		return
+	var plats: Array = active_level._get_platforms()
+	for plat in plats:
+		var px: float = plat[0]
+		var py: float = plat[1]
+		var pw: float = plat[2]
+		var bottom: float = rect.end.y
+		if rect.position.x < px + pw - 5.0 \
+				and rect.end.x > px + 5.0 \
+				and bottom >= py \
+				and bottom <= py + 35.0:
+			trap["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
+			trap["vy"] = 0.0
+			trap["on_ground"] = true
+			return
 
 
 func _collide_plats(p: Dictionary) -> void:
@@ -825,6 +919,7 @@ func _restart_round() -> void:
 	game_over = false
 	restart_t = 0.0
 	impacts = []
+	trap_effects = []
 	MenuManager.locked = false
 	_lbl_winner.visible = false
 	_lbl_restart.visible = false
@@ -892,6 +987,22 @@ func _draw() -> void:
 				var fade: float = 1.0 - ae["t"] / ae["skill"].effect_duration
 				draw_rect(rect, Color(col.r, col.g, col.b, 0.35 * fade))
 				draw_rect(rect, Color(col.r, col.g, col.b, fade), false)
+
+	# Lottery-ticket traps
+	for trap in trap_effects:
+		var rect: Rect2 = trap["rect"]
+		var center: Vector2 = rect.position + rect.size * 0.5
+		var tint: Color = Color(0.55, 1.0, 0.55) if trap["type"] == "green" else Color(1.0, 0.5, 0.5)
+		if trap["on_ground"]:
+			var glow: Color = Color(0.2, 0.85, 0.2, 0.35) if trap["type"] == "green" else Color(0.85, 0.15, 0.15, 0.35)
+			draw_rect(Rect2(center.x - rect.size.x * 0.6, rect.end.y - 5.0, rect.size.x * 1.2, 6.0), glow)
+		var tex: Texture = trap["tex"]
+		if tex != null:
+			draw_set_transform(center, trap["rotation"], Vector2.ONE)
+			draw_texture_rect(tex, Rect2(-rect.size * 0.5, rect.size), false, tint)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		else:
+			draw_rect(rect, tint * Color(1, 1, 1, 0.75))
 
 	# Cast charge bars (above character head)
 	for i in [0, 1]:

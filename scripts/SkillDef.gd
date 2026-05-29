@@ -50,3 +50,8 @@ export var pull_force: float = 0.0
 export var self_kill_if_no_hit: bool = false
 
 export var is_transform: bool = false
+
+# When true, also spawn a lottery-ticket trap *behind* the caster on activation.
+# The ticket falls, lands, and stays until a player walks over it.
+# Randomly green (halve that player's cooldowns) or red (kill that player).
+export var spawn_behind_trap: bool = false
