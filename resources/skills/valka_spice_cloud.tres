@@ -6,12 +6,12 @@
 script = ExtResource( 1 )
 display_name = "Spice Cloud"
 cast_time = 0.35
-cooldown = 2.5
+cooldown = 1.5
 anim_cast = 0.1
 cast_anim = "kick"
-effect_width = 80.0
-effect_height = 70.0
-effect_offset_x = 40.0
+effect_width = 30.0
+effect_height = 30.0
+effect_offset_x = 60.0
 effect_offset_y = 10.0
 effect_duration = 1.2
 effect_color = Color( 1, 0.4, 0.1, 1 )
