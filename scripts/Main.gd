@@ -324,6 +324,8 @@ func _process(delta: float) -> void:
 		update()
 		return
 
+	_apply_pull_effects(dt)
+
 	for i in [0, 1]:
 		_update_player(i, 1 - i, dt)
 
@@ -610,6 +612,27 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		p["anim_t"] = 0.0
 
 
+func _apply_pull_effects(dt: float) -> void:
+	for src_i in [0, 1]:
+		if pl[src_i].empty():
+			continue
+		for ae in pl[src_i]["active_effects"]:
+			var pull: float = ae["skill"].pull_force
+			if pull <= 0.0:
+				continue
+			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
+			for target_i in [0, 1]:
+				var tp: Dictionary = pl[target_i]
+				if tp.empty() or tp["dead"]:
+					continue
+				var tpd: CharacterDef = tp["def"]
+				var tp_center: Vector2 = tp["pos"] + Vector2(tpd.body_offset_x + tpd.body_w * 0.5, tpd.body_offset_y + tpd.body_h * 0.5)
+				var diff: Vector2 = center - tp_center
+				var dist: float = diff.length()
+				if dist > 5.0:
+					tp["vel"] += diff.normalized() * pull * dt
+
+
 func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> void:
 	if sk.teleport_behind:
 		var o: Dictionary = pl[1 - i]
@@ -638,6 +661,9 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
+	if sk.self_cd_reduce_on_cast > 0.0:
+		for k in 3:
+			p["skill_cds"][k] = max(0.0, p["skill_cds"][k] * (1.0 - sk.self_cd_reduce_on_cast))
 	if sk.player_launch_x != 0.0:
 		p["vel"].x = dir * sk.player_launch_x
 		p["launch_t"] = sk.player_launch_duration

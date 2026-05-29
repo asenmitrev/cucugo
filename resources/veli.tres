@@ -3,7 +3,7 @@
 [ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
 [ext_resource path="res://resources/skills/veli_snake_bite.tres" type="Resource" id=2]
 [ext_resource path="res://resources/skills/veli_chain_whip.tres" type="Resource" id=3]
-[ext_resource path="res://resources/skills/veli_rockstar_aura.tres" type="Resource" id=4]
+[ext_resource path="res://resources/skills/veli_nvc.tres" type="Resource" id=4]
 
 [resource]
 script = ExtResource( 1 )

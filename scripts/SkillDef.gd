@@ -38,3 +38,9 @@ export var player_launch_duration: float = 0.0
 export var teleport_behind: bool = false
 
 export var is_passive: bool = false
+
+# When > 0, reduce all own skill cooldowns by this fraction on activation (e.g. 0.15 = 15% off)
+export var self_cd_reduce_on_cast: float = 0.0
+
+# When > 0, passively pull all living players toward this effect's center (px/s² acceleration)
+export var pull_force: float = 0.0

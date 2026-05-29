@@ -33,3 +33,5 @@ player_launch_y = 0.0
 player_launch_duration = 0.0
 teleport_behind = false
 is_passive = false
+self_cd_reduce_on_cast = 0.0
+pull_force = 0.0
