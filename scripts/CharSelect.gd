@@ -59,10 +59,10 @@ func _process(_delta: float) -> void:
 
 	if not _cs_confirmed[0]:
 		if Input.is_action_just_pressed("p1_left"):
-			_cs_sel[0] = wrapi(_cs_sel[0] - 1, 0, _all_defs.size())
+			_cs_sel[0] = wrapi(_cs_sel[0] - 1, 0, _all_defs.size() + 1)
 			changed = true
 		elif Input.is_action_just_pressed("p1_right"):
-			_cs_sel[0] = wrapi(_cs_sel[0] + 1, 0, _all_defs.size())
+			_cs_sel[0] = wrapi(_cs_sel[0] + 1, 0, _all_defs.size() + 1)
 			changed = true
 	if Input.is_action_just_pressed("p1_jump"):
 		_cs_confirmed[0] = not _cs_confirmed[0]
@@ -70,10 +70,10 @@ func _process(_delta: float) -> void:
 
 	if not _cs_confirmed[1]:
 		if Input.is_action_just_pressed("p2_left"):
-			_cs_sel[1] = wrapi(_cs_sel[1] - 1, 0, _all_defs.size())
+			_cs_sel[1] = wrapi(_cs_sel[1] - 1, 0, _all_defs.size() + 1)
 			changed = true
 		elif Input.is_action_just_pressed("p2_right"):
-			_cs_sel[1] = wrapi(_cs_sel[1] + 1, 0, _all_defs.size())
+			_cs_sel[1] = wrapi(_cs_sel[1] + 1, 0, _all_defs.size() + 1)
 			changed = true
 	if Input.is_action_just_pressed("p2_jump"):
 		_cs_confirmed[1] = not _cs_confirmed[1]
@@ -88,8 +88,18 @@ func _process(_delta: float) -> void:
 
 func _start_game() -> void:
 	var main_inst = load("res://scenes/Main.tscn").instance()
-	main_inst.p1_def = _all_defs[_cs_sel[0]]
-	main_inst.p2_def = _all_defs[_cs_sel[1]]
+	var rand_idx := _all_defs.size()
+	if _cs_sel[0] == rand_idx:
+		main_inst.p1_def = _all_defs[randi() % _all_defs.size()]
+		main_inst.p1_random = true
+	else:
+		main_inst.p1_def = _all_defs[_cs_sel[0]]
+	if _cs_sel[1] == rand_idx:
+		main_inst.p2_def = _all_defs[randi() % _all_defs.size()]
+		main_inst.p2_random = true
+	else:
+		main_inst.p2_def = _all_defs[_cs_sel[1]]
+	main_inst.rand_defs = _all_defs
 	get_tree().get_root().add_child(main_inst)
 	get_tree().current_scene = main_inst
 	queue_free()
@@ -119,7 +129,7 @@ func _draw() -> void:
 
 
 func _draw_player_card(pi: int) -> void:
-	var def: CharacterDef = _all_defs[_cs_sel[pi]]
+	var is_random: bool = _cs_sel[pi] == _all_defs.size()
 	var confirmed: bool = _cs_confirmed[pi]
 
 	var cx: float = W * 0.25 if pi == 0 else W * 0.75
@@ -128,27 +138,38 @@ func _draw_player_card(pi: int) -> void:
 	var card_w: float = 200.0
 	var card_h: float = 300.0
 
+	var rand_color := Color(1.0, 0.85, 0.1)
+	var lc: Color = rand_color if is_random else _all_defs[_cs_sel[pi]].label_color
+
 	var bg_col := Color(0.08, 0.14, 0.10) if confirmed else Color(0.10, 0.10, 0.18)
 	draw_rect(Rect2(card_x, card_y, card_w, card_h), bg_col)
-	var lc: Color = def.label_color
 	var border_col: Color = lc if confirmed else Color(lc.r * 0.45, lc.g * 0.45, lc.b * 0.45)
 	draw_rect(Rect2(card_x, card_y, card_w, card_h), border_col, false, 2.0)
 
 	var plabel: String = "P1" if pi == 0 else "P2"
-	draw_string(_font, Vector2(cx - 8.0, card_y + 22.0), plabel, def.label_color)
+	draw_string(_font, Vector2(cx - 8.0, card_y + 22.0), plabel, lc)
 
 	var portrait_size := 140.0
 	var px: float = cx - portrait_size * 0.5
 	var py: float = card_y + 35.0
-	var tex: Texture = _get_idle_tex(def.char_name)
-	draw_texture_rect_region(tex, Rect2(px, py, portrait_size, portrait_size), Rect2(0, 0, 128, 128))
+
+	if is_random:
+		draw_string(_font, Vector2(cx - 10.0, py + portrait_size * 0.5 + 10.0), "?", Color.white)
+	else:
+		var def: CharacterDef = _all_defs[_cs_sel[pi]]
+		var tex: Texture = _get_idle_tex(def.char_name)
+		draw_texture_rect_region(tex, Rect2(px, py, portrait_size, portrait_size), Rect2(0, 0, 128, 128))
 
 	if not confirmed:
 		draw_string(_font, Vector2(card_x + 8.0, py + portrait_size * 0.5 + 8.0), "◄", Color.white)
 		draw_string(_font, Vector2(card_x + card_w - 20.0, py + portrait_size * 0.5 + 8.0), "►", Color.white)
 
-	var name_x: float = cx - float(def.display_name.length()) * 4.5
-	draw_string(_font, Vector2(name_x, py + portrait_size + 22.0), def.display_name, def.label_color)
+	if is_random:
+		draw_string(_font, Vector2(cx - 28.0, py + portrait_size + 22.0), "RANDOM", rand_color)
+	else:
+		var def: CharacterDef = _all_defs[_cs_sel[pi]]
+		var name_x: float = cx - float(def.display_name.length()) * 4.5
+		draw_string(_font, Vector2(name_x, py + portrait_size + 22.0), def.display_name, def.label_color)
 
 	var status_y: float = py + portrait_size + 48.0
 	if confirmed:

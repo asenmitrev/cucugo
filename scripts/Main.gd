@@ -176,6 +176,9 @@ func _load_tex(n: String) -> Dictionary:
 
 var p1_def = null
 var p2_def = null
+var p1_random: bool = false
+var p2_random: bool = false
+var rand_defs: Array = []
 
 var pl := [{}, {}]
 var impacts := []
@@ -1011,6 +1014,10 @@ func _restart_round() -> void:
 	# Re-init players with their original (pre-transform) defs
 	var _p1_def: CharacterDef = pl[0].get("original_def", pl[0].get("def", ASEN_DEF))
 	var _p2_def: CharacterDef = pl[1].get("original_def", pl[1].get("def", DJOLEV_DEF))
+	if p1_random and rand_defs.size() > 0:
+		_p1_def = rand_defs[randi() % rand_defs.size()]
+	if p2_random and rand_defs.size() > 0:
+		_p2_def = rand_defs[randi() % rand_defs.size()]
 	_init_player(0, _p1_def)
 	_init_player(1, _p2_def)
 	_lbl_controls.text = "%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1_def.display_name, _p2_def.display_name]
