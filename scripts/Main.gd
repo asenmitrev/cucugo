@@ -717,7 +717,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		else:
 			p["pos"].x = o["pos"].x - 80.0
 			p["right"] = true
-		p["pos"].y = o["pos"].y
+		p["pos"].y = o["pos"].y - 60.0
 		p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
 		p["skill_cds"][skill_idx] = sk.cooldown
 		p["casting_skill"] = -1
