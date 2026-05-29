@@ -36,6 +36,7 @@ export var player_launch_y: float = 0.0
 export var player_launch_duration: float = 0.0
 
 export var teleport_behind: bool = false
+export var teleport_random: bool = false
 
 export var is_passive: bool = false
 

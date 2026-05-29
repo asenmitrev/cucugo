@@ -3,7 +3,7 @@
 [ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
 [ext_resource path="res://resources/skills/valka_food_toss.tres" type="Resource" id=2]
 [ext_resource path="res://resources/skills/valka_spice_cloud.tres" type="Resource" id=3]
-[ext_resource path="res://resources/skills/valka_street_cart_dash.tres" type="Resource" id=4]
+[ext_resource path="res://resources/skills/valka_market_warp.tres" type="Resource" id=4]
 
 [resource]
 script = ExtResource( 1 )

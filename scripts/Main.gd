@@ -649,6 +649,19 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["cast_t"] = 0.0
 		return
 
+	if sk.teleport_random:
+		var plats: Array = active_level._get_platforms()
+		var plat: Array = plats[randi() % plats.size()]
+		var def: CharacterDef = p["def"]
+		p["pos"].x = clamp(plat[0] + randf() * max(0.0, plat[2] - SW), 0.0, W - SW)
+		p["pos"].y = plat[1] - def.body_h - def.body_offset_y
+		p["vel"] = Vector2.ZERO
+		p["right"] = randf() > 0.5
+		p["skill_cds"][skill_idx] = sk.cooldown
+		p["casting_skill"] = -1
+		p["cast_t"] = 0.0
+		return
+
 	var pos: Vector2 = p["pos"]
 	var hx: float
 	if p["right"]:
