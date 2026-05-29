@@ -4,19 +4,19 @@
 
 [resource]
 script = ExtResource( 1 )
-display_name = "Bayonet Charge"
+display_name = "Boomer Rage"
 cast_time = 0.25
-cooldown = 1.8
-anim_cast = 0.09
-cast_anim = "punch"
-effect_width = 60.0
-effect_height = 50.0
-effect_offset_x = 50.0
-effect_offset_y = 20.0
-effect_duration = 0.4
-effect_color = Color( 0.5, 0.75, 0.4, 1 )
-effect_sprite_path = ""
-effect_dx = 480.0
+cooldown = 4.0
+anim_cast = 0.1
+cast_anim = "kick"
+effect_width = 90.0
+effect_height = 70.0
+effect_offset_x = 65.0
+effect_offset_y = 8.0
+effect_duration = 2.0
+effect_color = Color( 0.8, 0.5, 0.1, 1 )
+effect_sprite_path = "res://assets/dani/boomer-rage.png"
+effect_dx = 360.0
 effect_dy = 0.0
 effect_rotation_speed = 0.0
 effect_gravity = 0.0
@@ -36,3 +36,4 @@ teleport_random = false
 is_passive = false
 self_cd_reduce_on_cast = 0.0
 pull_force = 0.0
+self_kill_if_no_hit = false

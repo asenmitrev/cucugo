@@ -541,6 +541,12 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 		if ae["t"] < ae["skill"].effect_duration:
 			live_effects.append(ae)
+		elif ae["skill"].self_kill_if_no_hit and not ae["hit"] and not p["dead"]:
+			p["dead"] = true
+			p["death_t"] = 0.0
+			p["anim_frame"] = 0
+			p["anim_t"] = 0.0
+			p["vel"] = Vector2(0.0, -200.0)
 	p["active_effects"] = live_effects + new_effects
 
 	# Tick cast timer and activate when ready

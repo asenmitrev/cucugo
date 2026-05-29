@@ -45,3 +45,6 @@ export var self_cd_reduce_on_cast: float = 0.0
 
 # When > 0, passively pull all living players toward this effect's center (px/s² acceleration)
 export var pull_force: float = 0.0
+
+# When true, kill the caster if this effect expires without landing a hit
+export var self_kill_if_no_hit: bool = false
