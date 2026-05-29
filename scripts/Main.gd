@@ -626,12 +626,14 @@ func _apply_pull_effects(dt: float) -> void:
 			continue
 		for ae in pl[src_i]["active_effects"]:
 			var pull: float = ae["skill"].pull_force
-			if pull <= 0.0:
+			if pull == 0.0:
 				continue
 			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
 			for target_i in [0, 1]:
 				var tp: Dictionary = pl[target_i]
 				if tp.empty() or tp["dead"]:
+					continue
+				if pull < 0.0 and target_i == src_i:
 					continue
 				var tpd: CharacterDef = tp["def"]
 				var tp_center: Vector2 = tp["pos"] + Vector2(tpd.body_offset_x + tpd.body_w * 0.5, tpd.body_offset_y + tpd.body_h * 0.5)
