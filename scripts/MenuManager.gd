@@ -10,37 +10,68 @@ var main_menu_sel: int = 0
 
 var show_controls: bool = false
 var controls_sel: int = 0
+var is_binding: bool = false
 
 # When true, ESC/Start won't open the menu (used during game-over countdown)
 var locked: bool = false
 
 const CTRL_ACTIONS := [
+	{"player": 0, "label": "Left", "action": "p1_left"},
+	{"player": 0, "label": "Right", "action": "p1_right"},
+	{"player": 0, "label": "Jump", "action": "p1_jump"},
 	{"player": 0, "label": "Skill 1", "action": "p1_skill1"},
 	{"player": 0, "label": "Skill 2", "action": "p1_skill2"},
 	{"player": 0, "label": "Skill 3", "action": "p1_skill3"},
+	{"player": 1, "label": "Left", "action": "p2_left"},
+	{"player": 1, "label": "Right", "action": "p2_right"},
+	{"player": 1, "label": "Jump", "action": "p2_jump"},
 	{"player": 1, "label": "Skill 1", "action": "p2_skill1"},
 	{"player": 1, "label": "Skill 2", "action": "p2_skill2"},
 	{"player": 1, "label": "Skill 3", "action": "p2_skill3"},
+	{"player": 2, "label": "Left", "action": "p3_left"},
+	{"player": 2, "label": "Right", "action": "p3_right"},
+	{"player": 2, "label": "Jump", "action": "p3_jump"},
+	{"player": 2, "label": "Skill 1", "action": "p3_skill1"},
+	{"player": 2, "label": "Skill 2", "action": "p3_skill2"},
+	{"player": 2, "label": "Skill 3", "action": "p3_skill3"},
+	{"player": 3, "label": "Left", "action": "p4_left"},
+	{"player": 3, "label": "Right", "action": "p4_right"},
+	{"player": 3, "label": "Jump", "action": "p4_jump"},
+	{"player": 3, "label": "Skill 1", "action": "p4_skill1"},
+	{"player": 3, "label": "Skill 2", "action": "p4_skill2"},
+	{"player": 3, "label": "Skill 3", "action": "p4_skill3"},
 ]
 
-const CTRL_VISIBLE_ROWS := 6
+const CTRL_VISIBLE_ROWS := 8
 const CTRL_ROW_H := 28
 const CTRL_BOX_W := 560
 const CTRL_BOX_H := 320
 
 var DEFAULT_BINDS: Dictionary = {
-	"p1_left":    KEY_A,
+	"p1_left":	KEY_A,
 	"p1_right":   KEY_D,
-	"p1_jump":    KEY_W,
+	"p1_jump":	KEY_W,
 	"p1_skill1":  KEY_R,
 	"p1_skill2":  KEY_F,
 	"p1_skill3":  KEY_V,
-	"p2_left":    KEY_LEFT,
+	"p2_left":	KEY_LEFT,
 	"p2_right":   KEY_RIGHT,
-	"p2_jump":    KEY_UP,
+	"p2_jump":	KEY_UP,
 	"p2_skill1":  KEY_SEMICOLON,
 	"p2_skill2":  KEY_APOSTROPHE,
 	"p2_skill3":  KEY_BACKSLASH,
+	"p3_left":	KEY_J,
+	"p3_right":   KEY_L,
+	"p3_jump":	KEY_I,
+	"p3_skill1":  KEY_U,
+	"p3_skill2":  KEY_O,
+	"p3_skill3":  KEY_P,
+	"p4_left":	KEY_KP_4,
+	"p4_right":   KEY_KP_6,
+	"p4_jump":	KEY_KP_8,
+	"p4_skill1":  KEY_KP_7,
+	"p4_skill2":  KEY_KP_9,
+	"p4_skill3":  KEY_KP_ADD,
 }
 
 # _ctrl_bindings maps action_name -> Array[InputEvent]  (supports multiple joypads + keyboard fallback)
@@ -66,6 +97,42 @@ func is_open() -> bool:
 func _input(event: InputEvent) -> void:
 	if show_controls:
 		get_tree().set_input_as_handled()
+		
+		if is_binding:
+			if event is InputEventKey:
+				var ev: InputEventKey = event as InputEventKey
+				if not ev.pressed or ev.echo: return
+				if ev.scancode == KEY_ESCAPE:
+					is_binding = false
+					_update_hint()
+					_request_update()
+					return
+				_ctrl_remap(event)
+				is_binding = false
+				_update_hint()
+				_request_update()
+				return
+			elif event is InputEventJoypadButton:
+				var ev: InputEventJoypadButton = event as InputEventJoypadButton
+				if not ev.pressed: return
+				_ctrl_remap(event)
+				is_binding = false
+				_update_hint()
+				_request_update()
+				return
+			elif event is InputEventJoypadMotion:
+				var ev: InputEventJoypadMotion = event as InputEventJoypadMotion
+				if abs(ev.axis_value) > 0.5:
+					# Use sign to capture axis direction (1 or -1)
+					var nev = ev.duplicate()
+					nev.axis_value = 1.0 if ev.axis_value > 0 else -1.0
+					_ctrl_remap(nev)
+					is_binding = false
+					_update_hint()
+					_request_update()
+				return
+			return
+
 		if event is InputEventKey:
 			var ev: InputEventKey = event as InputEventKey
 			if not ev.pressed or ev.echo:
@@ -76,38 +143,14 @@ func _input(event: InputEvent) -> void:
 				_ctrl_nav(-1)
 			elif ev.scancode == KEY_DOWN:
 				_ctrl_nav(1)
-			elif controls_sel == CTRL_ACTIONS.size():
-				if ev.scancode == KEY_ENTER or ev.scancode == KEY_KP_ENTER:
+			elif ev.scancode == KEY_ENTER or ev.scancode == KEY_KP_ENTER:
+				if controls_sel == CTRL_ACTIONS.size():
 					_ctrl_reset_defaults()
-			else:
-				_ctrl_remap(event)
+				else:
+					is_binding = true
+					_update_hint()
 			_request_update()
 			return
-		if event is InputEventJoypadButton:
-			var ev: InputEventJoypadButton = event as InputEventJoypadButton
-			if not ev.pressed:
-				return
-			if ev.button_index == JOY_DPAD_UP:
-				_ctrl_nav(-1)
-			elif ev.button_index == JOY_DPAD_DOWN:
-				_ctrl_nav(1)
-			elif event.is_action_pressed("start"):
-				_ctrl_toggle()
-			elif controls_sel == CTRL_ACTIONS.size():
-				_ctrl_reset_defaults()
-			else:
-				_ctrl_remap(event)
-			_request_update()
-			return
-		if event is InputEventJoypadMotion:
-			var ev: InputEventJoypadMotion = event as InputEventJoypadMotion
-			if ev.axis == JOY_AXIS_1 or ev.axis == 7:
-				if ev.axis_value < -0.5:
-					_ctrl_nav(-1)
-					_request_update()
-				elif ev.axis_value > 0.5:
-					_ctrl_nav(1)
-					_request_update()
 		return
 
 	if show_main_menu:
@@ -124,29 +167,10 @@ func _input(event: InputEvent) -> void:
 				main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
 			elif ev.scancode == KEY_ENTER or ev.scancode == KEY_KP_ENTER or ev.scancode == KEY_SPACE:
 				_main_menu_confirm()
-		elif event is InputEventJoypadButton:
-			var ev: InputEventJoypadButton = event as InputEventJoypadButton
-			if not ev.pressed:
-				return
-			if ev.button_index == JOY_DPAD_UP:
-				main_menu_sel = wrapi(main_menu_sel - 1, 0, MAIN_MENU_ITEMS.size())
-			elif ev.button_index == JOY_DPAD_DOWN:
-				main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
-			elif ev.button_index == JOY_SONY_X or ev.button_index == JOY_XBOX_A:
-				_main_menu_confirm()
-			elif event.is_action_pressed("start"):
-				show_main_menu = false
-		elif event is InputEventJoypadMotion:
-			var ev: InputEventJoypadMotion = event as InputEventJoypadMotion
-			if ev.axis == JOY_AXIS_1 or ev.axis == 7:
-				if ev.axis_value < -0.5:
-					main_menu_sel = wrapi(main_menu_sel - 1, 0, MAIN_MENU_ITEMS.size())
-				elif ev.axis_value > 0.5:
-					main_menu_sel = wrapi(main_menu_sel + 1, 0, MAIN_MENU_ITEMS.size())
 		_request_update()
 		return
 
-	# No overlay open — ESC or Start opens menu (unless locked)
+	# No overlay open — ESC opens menu (unless locked)
 	if locked:
 		return
 	if event is InputEventKey:
@@ -157,11 +181,6 @@ func _input(event: InputEvent) -> void:
 			get_tree().set_input_as_handled()
 			_request_update()
 			return
-	if InputMap.has_action("start") and event.is_action_pressed("start"):
-		show_main_menu = true
-		main_menu_sel = 0
-		get_tree().set_input_as_handled()
-		_request_update()
 
 
 func _request_update() -> void:
@@ -218,42 +237,26 @@ func _ctrl_reset_defaults() -> void:
 
 
 func _update_hint() -> void:
-	if controls_sel == CTRL_ACTIONS.size():
-		_hint_text = "↑↓ navigate   Enter/any button to reset   Esc/Start close"
+	if is_binding:
+		_hint_text = "Press any key/button to bind (Esc to cancel)"
+	elif controls_sel == CTRL_ACTIONS.size():
+		_hint_text = "↑↓ navigate   Enter/A-btn to reset   Esc/Start close"
 	else:
-		_hint_text = "↑↓ navigate   any key/button to bind   Esc/Start close"
+		_hint_text = "↑↓ navigate   Enter/A-btn to bind   Esc/Start close"
 
 
 func _setup_default_controls() -> void:
 	for action in DEFAULT_BINDS:
 		if not _input_map_has_action(action):
 			InputMap.add_action(action)
+		else:
+			InputMap.action_erase_events(action)
 		var ev := InputEventKey.new()
 		ev.scancode = DEFAULT_BINDS[action]
 		_apply_event_to_action(action, ev, -1)
-	_setup_joypad_movement()
 
 
-func _setup_joypad_movement() -> void:
-	# device 0 = P1, device 1 = P2
-	var dpad_mappings := [
-		["p1_left",  0, JOY_DPAD_LEFT],
-		["p1_right", 0, JOY_DPAD_RIGHT],
-		["p1_jump",  0, JOY_DPAD_UP],
-		["p1_jump",  0, JOY_SONY_X],
-		["p1_jump",  0, JOY_XBOX_A],
-		["p2_left",  1, JOY_DPAD_LEFT],
-		["p2_right", 1, JOY_DPAD_RIGHT],
-		["p2_jump",  1, JOY_DPAD_UP],
-		["p2_jump",  1, JOY_SONY_X],
-		["p2_jump",  1, JOY_XBOX_A],
-	]
-	for m in dpad_mappings:
-		var ev := InputEventJoypadButton.new()
-		ev.device = m[1]
-		ev.button_index = m[2]
-		ev.pressed = true
-		InputMap.action_add_event(m[0], ev)
+
 
 	var axis_mappings := [
 		["p1_left",  0, JOY_AXIS_0, -1.0],
@@ -262,6 +265,12 @@ func _setup_joypad_movement() -> void:
 		["p2_left",  1, JOY_AXIS_0, -1.0],
 		["p2_right", 1, JOY_AXIS_0,  1.0],
 		["p2_jump",  1, JOY_AXIS_1, -1.0],
+		["p3_left",  2, JOY_AXIS_0, -1.0],
+		["p3_right", 2, JOY_AXIS_0,  1.0],
+		["p3_jump",  2, JOY_AXIS_1, -1.0],
+		["p4_left",  3, JOY_AXIS_0, -1.0],
+		["p4_right", 3, JOY_AXIS_0,  1.0],
+		["p4_jump",  3, JOY_AXIS_1, -1.0],
 	]
 	for m in axis_mappings:
 		var ev := InputEventJoypadMotion.new()
@@ -293,6 +302,10 @@ func _apply_event_to_action(action: String, ev: InputEvent, device: int) -> void
 					and (e.device == device or device == -1 or e.device == -1)
 			elif ev is InputEventKey and e is InputEventKey:
 				conflict = (e as InputEventKey).scancode == (ev as InputEventKey).scancode
+			elif ev is InputEventJoypadMotion and e is InputEventJoypadMotion:
+				conflict = (e as InputEventJoypadMotion).axis == (ev as InputEventJoypadMotion).axis \
+					and sign((e as InputEventJoypadMotion).axis_value) == sign((ev as InputEventJoypadMotion).axis_value) \
+					and (e.device == device or device == -1 or e.device == -1)
 			if conflict:
 				InputMap.action_erase_event(other, e)
 			else:
@@ -305,6 +318,8 @@ func _apply_event_to_action(action: String, ev: InputEvent, device: int) -> void
 
 	if ev is InputEventJoypadButton:
 		(ev as InputEventJoypadButton).device = device
+	elif ev is InputEventJoypadMotion:
+		(ev as InputEventJoypadMotion).device = device
 	InputMap.action_add_event(action, ev)
 	_ctrl_bindings[action] = [ev]
 
@@ -331,7 +346,14 @@ func _get_binding_display(action: String) -> String:
 			var dev_name: String = Input.get_joy_name(dev) if dev >= 0 else "any"
 			if dev_name == "":
 				dev_name = "dev%d" % dev
-			parts.append("Joy:%d(%s)" % [e.button_index, dev_name])
+			parts.append("JoyBtn:%d(%s)" % [e.button_index, dev_name])
+		elif e is InputEventJoypadMotion:
+			var dev: int = e.device
+			var dev_name: String = Input.get_joy_name(dev) if dev >= 0 else "any"
+			if dev_name == "":
+				dev_name = "dev%d" % dev
+			var sign_str = "+" if e.axis_value > 0 else "-"
+			parts.append("JoyAxis:%d%s(%s)" % [e.axis, sign_str, dev_name])
 
 	return ", ".join(parts) if parts.size() > 1 else parts[0] if parts.size() == 1 else "(unbound)"
 
@@ -349,6 +371,9 @@ func _ctrl_save() -> void:
 				file.store_line("%s=key:%d" % [action, (e as InputEventKey).scancode])
 			elif e is InputEventJoypadButton:
 				file.store_line("%s=joy:%d:%d" % [action, e.button_index, e.device])
+			elif e is InputEventJoypadMotion:
+				var sv = 1 if e.axis_value > 0 else -1
+				file.store_line("%s=joyaxis:%d:%d:%d" % [action, e.axis, sv, e.device])
 	file.close()
 
 
@@ -379,6 +404,16 @@ func _ctrl_load() -> void:
 			jev.button_index = btn
 			jev.device = dev
 			jev.pressed = true
+			_apply_event_to_action(action, jev, dev)
+		elif val.begins_with("joyaxis:"):
+			var joy_data: PoolStringArray = val.substr(8).split(":")
+			var axis: int = int(joy_data[0])
+			var sv: int = int(joy_data[1])
+			var dev: int = int(joy_data[2]) if joy_data.size() > 2 else -1
+			var jev := InputEventJoypadMotion.new()
+			jev.axis = axis
+			jev.axis_value = float(sv)
+			jev.device = dev
 			_apply_event_to_action(action, jev, dev)
 		else:
 			# Legacy format (plain number = keycode)
@@ -461,12 +496,12 @@ func _draw_ctrl_rows(canvas: CanvasItem, bx: float, row_top: float, offset: int)
 
 		if ca["player"] != prev_player:
 			prev_player = ca["player"]
-			var pname: String = "Player 1" if ca["player"] == 0 else "Player 2"
+			var pname: String = "Player " + str(ca["player"] + 1)
 			canvas.draw_string(font, Vector2(bx + 14.0, ry - 4.0), pname, Color(0.8, 0.8, 0.9))
 
-		var key_str: String = _get_binding_display(ca["action"])
+		var key_str: String = "(press key/button...)" if (is_binding and idx == controls_sel) else _get_binding_display(ca["action"])
 		var line: String = "  %s: %s" % [ca["label"], key_str]
-		var col: Color = Color(1.0, 1.0, 1.0) if idx == controls_sel else Color(0.75, 0.75, 0.85)
+		var col: Color = Color(1.0, 1.0, 0.2) if (is_binding and idx == controls_sel) else (Color(1.0, 1.0, 1.0) if idx == controls_sel else Color(0.75, 0.75, 0.85))
 		canvas.draw_string(font, Vector2(bx + 14.0, ry + CTRL_ROW_H - 8.0), line, col)
 
 	var reset_ry: float = row_top + float(CTRL_VISIBLE_ROWS) * CTRL_ROW_H + 10.0

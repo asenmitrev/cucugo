@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource( 1 )
 display_name = "Dynamite Toss"
-cast_time = 1.0
+cast_time = 0.8
 cooldown = 2.5
 anim_cast = 0.1
 cast_anim = "kick"
@@ -21,13 +21,14 @@ effect_dy = -380.0
 effect_rotation_speed = 120.0
 effect_gravity = 700.0
 bounce_coefficient = 1.1
+hit_walls_both_ways = true
 effect_turnaround = false
 hit_kills = true
 hit_trigger_cooldowns = false
 child_skill_path = ""
 child_spawn_interval = 0.0
 child_spawn_limit = 6
-spawn_on_impact = true
+spawn_on_impact = false
 player_launch_x = 0.0
 player_launch_y = 0.0
 player_launch_duration = 0.0

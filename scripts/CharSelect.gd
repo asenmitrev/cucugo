@@ -32,8 +32,9 @@ func _get_idle_tex(char_name: String) -> Texture:
 	return _idle_tex_cache[char_name]
 
 var _all_defs: Array = []
-var _cs_sel: Array = [0, 0]
-var _cs_confirmed: Array = [false, false]
+var _cs_sel: Array = [0, 0, 0, 0]
+var _cs_confirmed: Array = [false, false, false, false]
+var _cs_joined: Array = [true, true, false, false]
 var _font: Font
 
 
@@ -57,48 +58,52 @@ func _process(_delta: float) -> void:
 
 	var changed := false
 
-	if not _cs_confirmed[0]:
-		if Input.is_action_just_pressed("p1_left"):
-			_cs_sel[0] = wrapi(_cs_sel[0] - 1, 0, _all_defs.size() + 1)
-			changed = true
-		elif Input.is_action_just_pressed("p1_right"):
-			_cs_sel[0] = wrapi(_cs_sel[0] + 1, 0, _all_defs.size() + 1)
-			changed = true
-	if Input.is_action_just_pressed("p1_jump"):
-		_cs_confirmed[0] = not _cs_confirmed[0]
-		changed = true
-
-	if not _cs_confirmed[1]:
-		if Input.is_action_just_pressed("p2_left"):
-			_cs_sel[1] = wrapi(_cs_sel[1] - 1, 0, _all_defs.size() + 1)
-			changed = true
-		elif Input.is_action_just_pressed("p2_right"):
-			_cs_sel[1] = wrapi(_cs_sel[1] + 1, 0, _all_defs.size() + 1)
-			changed = true
-	if Input.is_action_just_pressed("p2_jump"):
-		_cs_confirmed[1] = not _cs_confirmed[1]
-		changed = true
+	for pi in range(4):
+		var prefix = "p" + str(pi + 1) + "_"
+		if not _cs_joined[pi]:
+			if Input.is_action_just_pressed(prefix + "jump") or Input.is_action_just_pressed(prefix + "left") or Input.is_action_just_pressed(prefix + "right"):
+				_cs_joined[pi] = true
+				changed = true
+		else:
+			if not _cs_confirmed[pi]:
+				if Input.is_action_just_pressed(prefix + "left"):
+					_cs_sel[pi] = wrapi(_cs_sel[pi] - 1, 0, _all_defs.size() + 1)
+					changed = true
+				elif Input.is_action_just_pressed(prefix + "right"):
+					_cs_sel[pi] = wrapi(_cs_sel[pi] + 1, 0, _all_defs.size() + 1)
+					changed = true
+			if Input.is_action_just_pressed(prefix + "jump"):
+				_cs_confirmed[pi] = not _cs_confirmed[pi]
+				changed = true
 
 	if changed:
 		update()
 
-	if _cs_confirmed[0] and _cs_confirmed[1]:
+	var all_ready := true
+	var active_count := 0
+	for pi in range(4):
+		if _cs_joined[pi]:
+			active_count += 1
+			if not _cs_confirmed[pi]:
+				all_ready = false
+				break
+	if active_count >= 2 and all_ready:
 		_start_game()
 
 
 func _start_game() -> void:
 	var main_inst = load("res://scenes/Main.tscn").instance()
 	var rand_idx := _all_defs.size()
-	if _cs_sel[0] == rand_idx:
-		main_inst.p1_def = _all_defs[randi() % _all_defs.size()]
-		main_inst.p1_random = true
-	else:
-		main_inst.p1_def = _all_defs[_cs_sel[0]]
-	if _cs_sel[1] == rand_idx:
-		main_inst.p2_def = _all_defs[randi() % _all_defs.size()]
-		main_inst.p2_random = true
-	else:
-		main_inst.p2_def = _all_defs[_cs_sel[1]]
+	main_inst.p_defs = [null, null, null, null]
+	main_inst.p_active = _cs_joined.duplicate()
+	main_inst.p_random = [false, false, false, false]
+	for pi in range(4):
+		if _cs_joined[pi]:
+			if _cs_sel[pi] == rand_idx:
+				main_inst.p_random[pi] = true
+				main_inst.p_defs[pi] = _all_defs[randi() % _all_defs.size()]
+			else:
+				main_inst.p_defs[pi] = _all_defs[_cs_sel[pi]]
 	main_inst.rand_defs = _all_defs
 	get_tree().get_root().add_child(main_inst)
 	get_tree().current_scene = main_inst
@@ -117,26 +122,30 @@ func _draw() -> void:
 
 	draw_string(_font, Vector2(W * 0.5 - 110.0, 46.0), "SELECT YOUR CHARACTER", Color.white)
 
-	draw_rect(Rect2(W * 0.5 - 1.0, 62.0, 2.0, H - 90.0), Color(0.35, 0.32, 0.5, 0.5))
+	for pi in range(3):
+		var sep_cx = (pi * 0.25 + 0.25) * W
+		draw_rect(Rect2(sep_cx - 1.0, 62.0, 2.0, H - 90.0), Color(0.35, 0.32, 0.5, 0.5))
 
-	_draw_player_card(0)
-	_draw_player_card(1)
+	for pi in range(4):
+		var cx = (pi * 0.25 + 0.125) * W
+		if _cs_joined[pi]:
+			_draw_player_card(pi, cx)
+		else:
+			_draw_join_card(pi, cx)
 
-	draw_string(_font, Vector2(20.0, H - 14.0), "P1: A/D select   W/A-btn confirm", Color(0.5, 0.5, 0.65))
-	draw_string(_font, Vector2(W * 0.5 + 20.0, H - 14.0), "P2: ←/→ select   ↑/A-btn confirm", Color(0.5, 0.5, 0.65))
+	draw_string(_font, Vector2(20.0, H - 14.0), "P1/P2/P3/P4: A/D/Left/Right select   W/Up confirm", Color(0.5, 0.5, 0.65))
 
 	MenuManager.draw_overlay(self)
 
 
-func _draw_player_card(pi: int) -> void:
+func _draw_player_card(pi: int, cx: float) -> void:
 	var is_random: bool = _cs_sel[pi] == _all_defs.size()
 	var confirmed: bool = _cs_confirmed[pi]
 
-	var cx: float = W * 0.25 if pi == 0 else W * 0.75
-	var card_x: float = cx - 100.0
-	var card_y: float = 68.0
-	var card_w: float = 200.0
+	var card_w: float = 160.0
 	var card_h: float = 300.0
+	var card_x: float = cx - card_w * 0.5
+	var card_y: float = 68.0
 
 	var rand_color := Color(1.0, 0.85, 0.1)
 	var lc: Color = rand_color if is_random else _all_defs[_cs_sel[pi]].label_color
@@ -146,10 +155,10 @@ func _draw_player_card(pi: int) -> void:
 	var border_col: Color = lc if confirmed else Color(lc.r * 0.45, lc.g * 0.45, lc.b * 0.45)
 	draw_rect(Rect2(card_x, card_y, card_w, card_h), border_col, false, 2.0)
 
-	var plabel: String = "P1" if pi == 0 else "P2"
+	var plabel: String = "P" + str(pi + 1)
 	draw_string(_font, Vector2(cx - 8.0, card_y + 22.0), plabel, lc)
 
-	var portrait_size := 140.0
+	var portrait_size := 120.0
 	var px: float = cx - portrait_size * 0.5
 	var py: float = card_y + 35.0
 
@@ -175,5 +184,24 @@ func _draw_player_card(pi: int) -> void:
 	if confirmed:
 		draw_string(_font, Vector2(cx - 38.0, status_y), "CONFIRMED!", Color(0.3, 1.0, 0.4))
 	else:
-		var hint: String = "W/A-btn confirm" if pi == 0 else "↑/A-btn confirm"
-		draw_string(_font, Vector2(cx - 46.0, status_y), hint, Color(0.5, 0.5, 0.65))
+		var hint: String = "Jump confirm"
+		draw_string(_font, Vector2(cx - 40.0, status_y), hint, Color(0.5, 0.5, 0.65))
+
+func _draw_join_card(pi: int, cx: float) -> void:
+	var card_w: float = 160.0
+	var card_h: float = 300.0
+	var card_x: float = cx - card_w * 0.5
+	var card_y: float = 68.0
+
+	var bg_col := Color(0.08, 0.08, 0.12, 0.6)
+	var border_col := Color(0.2, 0.2, 0.3)
+
+	draw_rect(Rect2(card_x, card_y, card_w, card_h), bg_col)
+	draw_rect(Rect2(card_x, card_y, card_w, card_h), border_col, false, 2.0)
+
+	var plabel: String = "P" + str(pi + 1)
+	draw_string(_font, Vector2(cx - 8.0, card_y + 22.0), plabel, Color(0.4, 0.4, 0.5))
+
+	draw_string(_font, Vector2(cx - 24.0, card_y + card_h * 0.5 - 20.0), "PRESS", Color(0.5, 0.5, 0.5))
+	draw_string(_font, Vector2(cx - 20.0, card_y + card_h * 0.5 + 5.0), "JUMP", Color(0.7, 0.7, 0.8))
+	draw_string(_font, Vector2(cx - 30.0, card_y + card_h * 0.5 + 30.0), "TO JOIN", Color(0.5, 0.5, 0.5))

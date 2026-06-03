@@ -20,6 +20,7 @@ export var effect_dy: float = 0.0
 export var effect_rotation_speed: float = 0.0
 export var effect_gravity: float = 0.0
 export var bounce_coefficient: float = 0.0
+export var hit_walls_both_ways: bool = false
 export var effect_turnaround: bool = false
 
 export var hit_kills: bool = true

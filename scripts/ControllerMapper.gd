@@ -9,16 +9,16 @@ extends Node
 #   - A required ES action is absent from the config
 
 const ACTION_MAP := {
-	"left":            [["p1_left", 0],   ["p2_left", 1]],
-	"right":           [["p1_right", 0],  ["p2_right", 1]],
-	"up":              [["p1_jump", 0],   ["p2_jump", 1]],
-	"leftanalogleft":  [["p1_left", 0],   ["p2_left", 1]],
-	"leftanalogright": [["p1_right", 0],  ["p2_right", 1]],
-	"leftanalogup":    [["p1_jump", 0],   ["p2_jump", 1]],
-	"b":               [["p1_skill1", 0], ["p2_skill1", 1]],
-	"x":               [["p1_skill2", 0], ["p2_skill2", 1]],
-	"y":               [["p1_skill3", 0], ["p2_skill3", 1]],
-	"start":           [["start", 0],     ["start", 1]],
+	"left":            [["p1_left", 0],   ["p2_left", 1], ["p3_left", 2], ["p4_left", 3]],
+	"right":           [["p1_right", 0],  ["p2_right", 1], ["p3_right", 2], ["p4_right", 3]],
+	"up":              [["p1_jump", 0],   ["p2_jump", 1], ["p3_jump", 2], ["p4_jump", 3]],
+	"leftanalogleft":  [["p1_left", 0],   ["p2_left", 1], ["p3_left", 2], ["p4_left", 3]],
+	"leftanalogright": [["p1_right", 0],  ["p2_right", 1], ["p3_right", 2], ["p4_right", 3]],
+	"leftanalogup":    [["p1_jump", 0],   ["p2_jump", 1], ["p3_jump", 2], ["p4_jump", 3]],
+	"b":               [["p1_skill1", 0], ["p2_skill1", 1], ["p3_skill1", 2], ["p4_skill1", 3]],
+	"x":               [["p1_skill2", 0], ["p2_skill2", 1], ["p3_skill2", 2], ["p4_skill2", 3]],
+	"y":               [["p1_skill3", 0], ["p2_skill3", 1], ["p3_skill3", 2], ["p4_skill3", 3]],
+	"start":           [["start", 0],     ["start", 1], ["start", 2], ["start", 3]],
 }
 
 var _configs: Array = []
@@ -51,12 +51,12 @@ func _ready() -> void:
 
 	Input.connect("joy_connection_changed", self, "_on_joy_connected")
 
-	for device in [0, 1]:
+	for device in [0, 1, 2, 3]:
 		_remap_device(device)
 
 
 func _on_joy_connected(device: int, connected: bool) -> void:
-	if connected and device <= 1:
+	if connected and device <= 3:
 		_remap_device(device)
 
 

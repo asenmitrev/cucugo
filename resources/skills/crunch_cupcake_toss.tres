@@ -21,6 +21,7 @@ effect_dy = -200.0
 effect_rotation_speed = 180.0
 effect_gravity = 600.0
 bounce_coefficient = 0.0
+hit_walls_both_ways = false
 effect_turnaround = false
 hit_kills = true
 hit_trigger_cooldowns = false

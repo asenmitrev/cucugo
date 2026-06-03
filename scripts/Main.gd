@@ -174,21 +174,19 @@ func _load_tex(n: String) -> Dictionary:
 	return {}
 
 
-var p1_def = null
-var p2_def = null
-var p1_random: bool = false
-var p2_random: bool = false
+var p_defs: Array = [null, null, null, null]
+var p_active: Array = [false, false, false, false]
+var p_random: Array = [false, false, false, false]
 var rand_defs: Array = []
 
-var pl := [{}, {}]
+var pl := [{}, {}, {}, {}]
 var impacts := []
 var trap_effects := []
 var game_over := false
 var restart_t: float = 0.0
 const RESTART_DELAY := 1.0
 
-var _lbl_p1: Label
-var _lbl_p2: Label
+var _lbl_p: Array = [null, null, null, null]
 var _lbl_winner: Label
 var _lbl_restart: Label
 var _lbl_controls: Label
@@ -222,17 +220,24 @@ func _ready() -> void:
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
-	var _p1: CharacterDef = p1_def if p1_def != null else ASEN_DEF
-	var _p2: CharacterDef = p2_def if p2_def != null else DJOLEV_DEF
+	var _p1: CharacterDef = p_defs[0] if p_defs[0] != null else ASEN_DEF
+	var _p2: CharacterDef = p_defs[1] if p_defs[1] != null else DJOLEV_DEF
 	_lbl_level = _make_lbl(active_level.level_name, Vector2(0, 8), Color(0.55, 0.55, 0.7, 1))
 	_lbl_level.rect_size = Vector2(W / 2.2, 30)
 	_lbl_level.rect_scale = Vector2(2.2, 2.2)
 	_lbl_level.align = Label.ALIGN_CENTER
 
-	_lbl_p1 = _make_lbl(_p1.display_name, Vector2(18, 8), _p1.label_color)
-	_lbl_p2 = _make_lbl(_p2.display_name, Vector2(680, 8), _p2.label_color)
+	for pi in range(4):
+		if p_active[pi]:
+			var def: CharacterDef = p_defs[pi]
+			if def == null:
+				def = ASEN_DEF
+			var lx = 18.0 if pi % 2 == 0 else 680.0
+			var ly = 8.0 if pi < 2 else 38.0
+			_lbl_p[pi] = _make_lbl(def.display_name, Vector2(lx, ly), def.label_color)
+
 	_lbl_controls = _make_lbl(
-		"%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1.display_name, _p2.display_name],
+		"Esc menu  Arrow keys + Enter navigate menu",
 		Vector2(8, 432), Color(0.35, 0.35, 0.45))
 	_lbl_winner = _make_lbl("", Vector2(0, 168), Color.white)
 	_lbl_winner.rect_size = Vector2(W / 2.8, 40)
@@ -246,11 +251,17 @@ func _ready() -> void:
 	_lbl_restart.align = Label.ALIGN_CENTER
 	_lbl_restart.visible = false
 
-	for lbl in [_lbl_p1, _lbl_p2, _lbl_controls, _lbl_winner, _lbl_restart, _lbl_level]:
-		ui.add_child(lbl)
+	ui.add_child(_lbl_controls)
+	ui.add_child(_lbl_winner)
+	ui.add_child(_lbl_restart)
+	ui.add_child(_lbl_level)
+	for pi in range(4):
+		if _lbl_p[pi] != null:
+			ui.add_child(_lbl_p[pi])
 
-	_init_player(0, _p1)
-	_init_player(1, _p2)
+	for pi in range(4):
+		if p_active[pi]:
+			_init_player(pi, p_defs[pi] if p_defs[pi] != null else ASEN_DEF)
 
 
 
@@ -272,12 +283,14 @@ func _init_player(i: int, def: CharacterDef) -> void:
 
 	var tex: Dictionary = _load_tex(def.char_name)
 
-	var slot: String = "p1" if i == 0 else "p2"
+	var slot: String = "p" + str(i + 1)
 	var start_pos: Vector2 = active_level.start_p1 if i == 0 else active_level.start_p2
+	if i == 2: start_pos = active_level.start_p1 + Vector2(40, -40)
+	if i == 3: start_pos = active_level.start_p2 + Vector2(-40, -40)
 	pl[i] = {
 		"def": def,
 		"name": def.display_name, "pos": start_pos, "vel": Vector2.ZERO,
-		"right": i == 0, "on_gnd": false,
+		"right": i == 0 or i == 2, "on_gnd": false,
 		"state": "idle",
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
@@ -332,18 +345,29 @@ func _process(delta: float) -> void:
 	_apply_pull_effects(dt)
 	_update_traps(dt)
 
-	for i in [0, 1]:
-		_update_player(i, 1 - i, dt)
+	for i in range(4):
+		if p_active[i]:
+			_update_player(i, dt)
 
 	if not game_over:
-		if pl[0]["dead"] and pl[1]["dead"]:
-			_end_game("DRAW!")
-		elif pl[0]["dead"]:
-			_end_game(pl[1]["def"].display_name + " WINS!")
-		elif pl[1]["dead"]:
-			_end_game(pl[0]["def"].display_name + " WINS!")
+		var alive_count = 0
+		var last_alive_name = ""
+		for i in range(4):
+			if p_active[i] and not pl[i]["dead"]:
+				alive_count += 1
+				last_alive_name = pl[i]["def"].display_name
+		if alive_count <= 1:
+			var active_total = 0
+			for i in range(4):
+				if p_active[i]: active_total += 1
+			if active_total > 1:
+				if alive_count == 1:
+					_end_game(last_alive_name + " WINS!")
+				else:
+					_end_game("DRAW!")
 
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
 		var spr: Sprite = p["spr"]
 		var key: String
@@ -412,9 +436,8 @@ func _process(delta: float) -> void:
 	update()
 
 
-func _update_player(i: int, oi: int, dt: float) -> void:
+func _update_player(i: int, dt: float) -> void:
 	var p: Dictionary = pl[i]
-	var o: Dictionary = pl[oi]
 	var def: CharacterDef = p["def"]
 
 	if p["dead"]:
@@ -503,8 +526,9 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 		ae["t"] += dt
 		ae["vy"] += ae["skill"].effect_gravity * dt
 		ae["rect"] = Rect2(ae["rect"].position + Vector2(ae["dx"], ae["dy"] + ae["vy"]) * dt, ae["rect"].size)
-		if ae["skill"].effect_gravity > 0.0 and ae["vy"] >= 0.0:
-			_collide_effect_plats(ae)
+		if ae["skill"].effect_gravity > 0.0 or ae["skill"].hit_walls_both_ways:
+			if ae["vy"] >= 0.0 or ae["skill"].hit_walls_both_ways:
+				_collide_effect_plats(ae)
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae)
@@ -512,39 +536,44 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 			ae["hit_t"] = max(0.0, ae["hit_t"] - dt)
 			if ae["hit_t"] <= 0.0:
 				ae["hit"] = false
-		if not ae["hit"] and not o["dead"] and not o.get("invulnerable", false):
-			var odef: CharacterDef = o["def"]
-			var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
-			var eff_rect: Rect2 = ae["rect"]
-			if eff_rect.intersects(o_rect):
-				ae["hit"] = true
-				ae["hit_t"] = ae["skill"].hit_interval
-				var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
-				impacts.append({"pos": hit_pos, "age": 0.0})
-				if ae["skill"].hit_trigger_cooldowns:
-					var oskills: Array = [o["def"].skill1, o["def"].skill2, o["def"].skill3]
-					for k in 3:
-						if oskills[k] != null:
-							o["skill_cds"][k] = oskills[k].cooldown
-				if ae["skill"].hit_kills:
-					var dir: float = 1.0 if p["right"] else -1.0
-					if o["lives"] > 1:
-						o["lives"] -= 1
-						o["stunned"] = true
-						o["invulnerable"] = true
-						o["death_t"] = 0.0
-						o["anim_frame"] = 0
-						o["anim_t"] = 0.0
-						o["vel"] = Vector2(dir * 380.0, -440.0)
-					else:
-						o["dead"] = true
-						o["death_t"] = 0.0
-						o["anim_frame"] = 0
-						o["anim_t"] = 0.0
-						o["vel"] = Vector2(dir * 380.0, -440.0)
-					if ae["skill"].hit_self_invisible:
-						p["invisible"] = true
-						p["invisible_t"] = 4.0
+		if not ae["hit"]:
+			for oi in range(4):
+				if oi == i or not p_active[oi]: continue
+				var o: Dictionary = pl[oi]
+				if not o["dead"] and not o.get("invulnerable", false):
+					var odef: CharacterDef = o["def"]
+					var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
+					var eff_rect: Rect2 = ae["rect"]
+					if eff_rect.intersects(o_rect):
+						ae["hit"] = true
+						ae["hit_t"] = ae["skill"].hit_interval
+						var hit_pos: Vector2 = eff_rect.position + eff_rect.size * 0.5
+						impacts.append({"pos": hit_pos, "age": 0.0})
+						if ae["skill"].hit_trigger_cooldowns:
+							var oskills: Array = [o["def"].skill1, o["def"].skill2, o["def"].skill3]
+							for k in 3:
+								if oskills[k] != null:
+									o["skill_cds"][k] = oskills[k].cooldown
+						if ae["skill"].hit_kills:
+							var dir: float = 1.0 if p["right"] else -1.0
+							if o["lives"] > 1:
+								o["lives"] -= 1
+								o["stunned"] = true
+								o["invulnerable"] = true
+								o["death_t"] = 0.0
+								o["anim_frame"] = 0
+								o["anim_t"] = 0.0
+								o["vel"] = Vector2(dir * 380.0, -440.0)
+							else:
+								o["dead"] = true
+								o["death_t"] = 0.0
+								o["anim_frame"] = 0
+								o["anim_t"] = 0.0
+								o["vel"] = Vector2(dir * 380.0, -440.0)
+							if ae["skill"].hit_self_invisible:
+								p["invisible"] = true
+								p["invisible_t"] = 4.0
+						break
 
 		var csk = ae["child_skill"]
 		if csk != null and ae["skill"].child_spawn_interval > 0.0:
@@ -643,37 +672,40 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 	else:
 		p["state"] = "idle"
 
-	# Stomp kill check must run BEFORE _collide_plats — the platform snap zeros vel.y and
-	# sets on_gnd on the same frame Yavor lands, which would skip the kill check otherwise.
-	if p.get("stomp_active", false) and p["vel"].y > 10.0 \
-			and not o["dead"] and not o.get("invulnerable", false):
-		var _stomp_pd: CharacterDef = p["def"]
-		var _stomp_od: CharacterDef = o["def"]
-		var _stomp_foot := Rect2(
-			p["pos"].x + _stomp_pd.body_offset_x,
-			p["pos"].y + _stomp_pd.body_offset_y + _stomp_pd.body_h - 12.0,
-			_stomp_pd.body_w, 15.0)
-		var _stomp_or := Rect2(o["pos"] + Vector2(_stomp_od.body_offset_x, _stomp_od.body_offset_y),
-			Vector2(_stomp_od.body_w, _stomp_od.body_h))
-		if _stomp_foot.intersects(_stomp_or):
-			p["stomp_active"] = false
-			impacts.append({"pos": _stomp_foot.position + _stomp_foot.size * 0.5, "age": 0.0})
-			p["vel"].y = -420.0
-			var _stomp_dir: float = 1.0 if p["right"] else -1.0
-			if o["lives"] > 1:
-				o["lives"] -= 1
-				o["stunned"] = true
-				o["invulnerable"] = true
-				o["death_t"] = 0.0
-				o["anim_frame"] = 0
-				o["anim_t"] = 0.0
-				o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
-			else:
-				o["dead"] = true
-				o["death_t"] = 0.0
-				o["anim_frame"] = 0
-				o["anim_t"] = 0.0
-				o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+	# Stomp kill check must run BEFORE _collide_plats
+	if p.get("stomp_active", false) and p["vel"].y > 10.0:
+		for oi in range(4):
+			if oi == i or not p_active[oi]: continue
+			var o: Dictionary = pl[oi]
+			if not o["dead"] and not o.get("invulnerable", false):
+				var _stomp_pd: CharacterDef = p["def"]
+				var _stomp_od: CharacterDef = o["def"]
+				var _stomp_foot := Rect2(
+					p["pos"].x + _stomp_pd.body_offset_x,
+					p["pos"].y + _stomp_pd.body_offset_y + _stomp_pd.body_h - 12.0,
+					_stomp_pd.body_w, 15.0)
+				var _stomp_or := Rect2(o["pos"] + Vector2(_stomp_od.body_offset_x, _stomp_od.body_offset_y),
+					Vector2(_stomp_od.body_w, _stomp_od.body_h))
+				if _stomp_foot.intersects(_stomp_or):
+					p["stomp_active"] = false
+					impacts.append({"pos": _stomp_foot.position + _stomp_foot.size * 0.5, "age": 0.0})
+					p["vel"].y = -420.0
+					var _stomp_dir: float = 1.0 if p["right"] else -1.0
+					if o["lives"] > 1:
+						o["lives"] -= 1
+						o["stunned"] = true
+						o["invulnerable"] = true
+						o["death_t"] = 0.0
+						o["anim_frame"] = 0
+						o["anim_t"] = 0.0
+						o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+					else:
+						o["dead"] = true
+						o["death_t"] = 0.0
+						o["anim_frame"] = 0
+						o["anim_t"] = 0.0
+						o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+					break
 
 	_collide_plats(p, dt)
 	var _bdef: CharacterDef = p["def"]
@@ -690,15 +722,16 @@ func _update_player(i: int, oi: int, dt: float) -> void:
 
 
 func _apply_pull_effects(dt: float) -> void:
-	for src_i in [0, 1]:
-		if pl[src_i].empty():
+	for src_i in range(4):
+		if not p_active[src_i] or pl[src_i].empty():
 			continue
 		for ae in pl[src_i]["active_effects"]:
 			var pull: float = ae["skill"].pull_force
 			if pull == 0.0:
 				continue
 			var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
-			for target_i in [0, 1]:
+			for target_i in range(4):
+				if not p_active[target_i]: continue
 				var tp: Dictionary = pl[target_i]
 				if tp.empty() or tp["dead"]:
 					continue
@@ -724,23 +757,33 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["skill_cds"][1] = 0.0
 		p["skill_cds"][2] = 0.0
 		p["skill_cds"][skill_idx] = sk.cooldown
-		var lbl: Label = _lbl_p1 if i == 0 else _lbl_p2
-		lbl.text = next_def.display_name
-		lbl.add_color_override("font_color", next_def.label_color)
+		var lbl: Label = _lbl_p[i]
+		if lbl != null:
+			lbl.text = next_def.display_name
+			lbl.add_color_override("font_color", next_def.label_color)
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
 		return
 
 	if sk.teleport_behind:
-		var o: Dictionary = pl[1 - i]
-		if p["pos"].x < o["pos"].x:
-			p["pos"].x = o["pos"].x + 80.0
-			p["right"] = false
-		else:
-			p["pos"].x = o["pos"].x - 80.0
-			p["right"] = true
-		p["pos"].y = o["pos"].y - 60.0
-		p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
+		var target_o = null
+		var min_dist = 99999.0
+		for oi in range(4):
+			if oi != i and p_active[oi] and not pl[oi]["dead"]:
+				var dist = abs(pl[oi]["pos"].x - p["pos"].x)
+				if dist < min_dist:
+					min_dist = dist
+					target_o = pl[oi]
+		if target_o != null:
+			var o: Dictionary = target_o
+			if p["pos"].x < o["pos"].x:
+				p["pos"].x = o["pos"].x + 80.0
+				p["right"] = false
+			else:
+				p["pos"].x = o["pos"].x - 80.0
+				p["right"] = true
+			p["pos"].y = o["pos"].y - 60.0
+			p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
 		p["skill_cds"][skill_idx] = sk.cooldown
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
@@ -857,7 +900,8 @@ func _update_traps(dt: float) -> void:
 		if trap["rect"].position.y > H + 50.0:
 			continue
 		var hit_this_frame := false
-		for pi in [0, 1]:
+		for pi in range(4):
+			if not p_active[pi]: continue
 			var tp: Dictionary = pl[pi]
 			if tp.empty() or tp["dead"] or tp.get("invulnerable", false):
 				continue
@@ -939,15 +983,33 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 		var px: float = plat[0]
 		var py: float = plat[1]
 		var pw: float = plat[2]
+		var ph: float = plat[3]
 		var bottom: float = rect.end.y
+		var top: float = rect.position.y
 		if rect.position.x < px + pw - 5.0 \
 				and rect.end.x > px + 5.0 \
 				and bottom >= py \
-				and bottom <= py + 35.0:
+				and bottom <= py + 35.0 \
+				and ae["vy"] >= 0.0:
 			ae["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
 			var bc: float = ae["skill"].bounce_coefficient
 			if bc > 0.0:
 				ae["vy"] = -abs(ae["vy"]) * bc
+			else:
+				ae["vy"] = 0.0
+			if ae["skill"].spawn_on_impact:
+				ae["ground_hit"] = true
+			return
+		elif ae["skill"].hit_walls_both_ways \
+				and rect.position.x < px + pw - 5.0 \
+				and rect.end.x > px + 5.0 \
+				and top <= py + ph \
+				and top >= py + ph - 35.0 \
+				and ae["vy"] < 0.0:
+			ae["rect"] = Rect2(rect.position.x, py + ph, rect.size.x, rect.size.y)
+			var bc: float = ae["skill"].bounce_coefficient
+			if bc > 0.0:
+				ae["vy"] = abs(ae["vy"]) * bc
 			else:
 				ae["vy"] = 0.0
 			if ae["skill"].spawn_on_impact:
@@ -998,7 +1060,8 @@ func _end_game(text: String) -> void:
 func _restart_round() -> void:
 	_pick_level()
 	# Remove old sprites
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		if pl[i].has("spr"):
 			var spr: Sprite = pl[i]["spr"]
 			if spr != null and spr.is_inside_tree():
@@ -1012,15 +1075,19 @@ func _restart_round() -> void:
 	_lbl_winner.visible = false
 	_lbl_restart.visible = false
 	# Re-init players with their original (pre-transform) defs
-	var _p1_def: CharacterDef = pl[0].get("original_def", pl[0].get("def", ASEN_DEF))
-	var _p2_def: CharacterDef = pl[1].get("original_def", pl[1].get("def", DJOLEV_DEF))
-	if p1_random and rand_defs.size() > 0:
-		_p1_def = rand_defs[randi() % rand_defs.size()]
-	if p2_random and rand_defs.size() > 0:
-		_p2_def = rand_defs[randi() % rand_defs.size()]
-	_init_player(0, _p1_def)
-	_init_player(1, _p2_def)
-	_lbl_controls.text = "%s: A/D move  W jump  R/F/V skills        %s: ←/→ move  ↑ jump  ;/'/ \\ skills        Esc menu" % [_p1_def.display_name, _p2_def.display_name]
+	for i in range(4):
+		if not p_active[i]: continue
+		var original_def: CharacterDef = pl[i].get("original_def", pl[i].get("def", ASEN_DEF))
+		if p_random[i] and rand_defs.size() > 0:
+			original_def = rand_defs[randi() % rand_defs.size()]
+			p_defs[i] = original_def
+		_init_player(i, original_def)
+		
+		if _lbl_p[i] != null:
+			_lbl_p[i].text = original_def.display_name
+			_lbl_p[i].add_color_override("font_color", original_def.label_color)
+
+	_lbl_controls.text = "Esc menu  Arrow keys + Enter navigate menu"
 
 
 func _draw() -> void:
@@ -1061,7 +1128,8 @@ func _draw() -> void:
 		draw_rect(Rect2(px + pw - 3, py, 3, pheight), ps)
 
 	# Active skill effect hitboxes
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
 		if p.empty():
 			continue
@@ -1097,7 +1165,8 @@ func _draw() -> void:
 			draw_rect(rect, tint * Color(1, 1, 1, 0.75))
 
 	# Cast charge bars (above character head)
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
 		if p.empty() or p["casting_skill"] < 0:
 			continue
@@ -1112,7 +1181,8 @@ func _draw() -> void:
 		draw_rect(Rect2(bx, by, 40.0 * progress, 5.0), Color(1.0, 0.9, 0.2, 0.9))
 
 	# Skill cooldown dots (1 dot per skill, gray for empty slots)
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
 		if p.empty() or p["dead"] or p.get("stunned", false) or p.get("getting_up", false):
 			continue
@@ -1136,7 +1206,8 @@ func _draw() -> void:
 						draw_arc(dot_center, 4.0, -PI * 0.5, -PI * 0.5 + filled_angle, 24, Color(0.2, 0.85, 0.25), 2.0)
 
 	# Stomp foot hitbox glow — visible while falling with stomp active
-	for i in [0, 1]:
+	for i in range(4):
+		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
 		if p.empty() or not p.get("stomp_active", false) or p["vel"].y <= 0.0:
 			continue

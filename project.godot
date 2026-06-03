@@ -160,6 +160,62 @@ start={
 , Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":1,"button_index":9,"pressure":0.0,"pressed":false,"script":null)
  ]
 }
+p3_left={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_right={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_jump={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_punch={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_skill1={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_skill2={
+"deadzone": 0.5,
+"events": [  ]
+}
+p3_skill3={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_left={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_right={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_jump={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_punch={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_skill1={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_skill2={
+"deadzone": 0.5,
+"events": [  ]
+}
+p4_skill3={
+"deadzone": 0.5,
+"events": [  ]
+}
 
 [physics]
 
