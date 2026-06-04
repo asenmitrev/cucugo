@@ -233,10 +233,8 @@ func exit_level_editor() -> void:
 	var current: Node = get_tree().current_scene
 	if current:
 		current.queue_free()
-	# Return to main menu
-	show_main_menu = true
-	main_menu_sel = 0
-	get_tree().current_scene = self
+	# Return to character select screen
+	_go_to_char_select()
 
 
 func _ctrl_toggle() -> void:
