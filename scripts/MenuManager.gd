@@ -477,12 +477,12 @@ func _draw_main_menu(canvas: CanvasItem) -> void:
 	canvas.draw_rect(Rect2(mx, my, mw, mh), Color(0.45, 0.4, 0.65), false, 2.0)
 	canvas.draw_string(font, Vector2(mx + mw * 0.5 - 22.0, my + 30.0), "MENU", Color.white)
 	for idx in MAIN_MENU_ITEMS.size():
-		var iy: float = my + 72.0 + float(idx) * 38.0
+		var iy: float = my + 72.0 + float(idx) * 30.0
 		if idx == main_menu_sel:
-			canvas.draw_rect(Rect2(mx + 8.0, iy - 20.0, mw - 16.0, 30.0), Color(0.22, 0.22, 0.35))
+			canvas.draw_rect(Rect2(mx + 8.0, iy - 15.0, mw - 16.0, 25.0), Color(0.22, 0.22, 0.35))
 		var col: Color = Color(1.0, 1.0, 1.0) if idx == main_menu_sel else Color(0.65, 0.65, 0.78)
 		canvas.draw_string(font, Vector2(mx + mw * 0.5 - 24.0, iy), MAIN_MENU_ITEMS[idx], col)
-	canvas.draw_string(font, Vector2(mx + 10.0, my + mh - 12.0), "↑↓ navigate   Enter confirm   Esc close", Color(0.5, 0.5, 0.65))
+	canvas.draw_string(font, Vector2(W * 0.5 - 140.0, my + mh + 20.0), "↑↓ navigate   Enter confirm   Esc close", Color(0.5, 0.5, 0.65))
 
 
 func _draw_controls(canvas: CanvasItem) -> void:
@@ -507,7 +507,7 @@ func _draw_controls(canvas: CanvasItem) -> void:
 		canvas.draw_rect(Rect2(bx + 4.0, sel_ry - 2.0, CTRL_BOX_W - 8.0, CTRL_ROW_H + 4.0), Color(0.22, 0.22, 0.35))
 
 	_draw_ctrl_rows(canvas, bx, row_top, offset)
-	canvas.draw_string(font, Vector2(bx, by + CTRL_BOX_H - 28.0), _hint_text, Color(0.6, 0.6, 0.8))
+	canvas.draw_string(font, Vector2(W * 0.5 - 160.0, by + CTRL_BOX_H + 20.0), _hint_text, Color(0.6, 0.6, 0.8))
 
 
 func _draw_ctrl_rows(canvas: CanvasItem, bx: float, row_top: float, offset: int) -> void:

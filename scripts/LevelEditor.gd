@@ -537,7 +537,7 @@ func _draw_properties_panel() -> void:
 	]
 	
 	var start_y = panel_y + 50
-	var line_height = 30
+	var line_height = 25
 	
 	for i in range(properties.size()):
 		var y = start_y + i * line_height
@@ -556,9 +556,14 @@ func _draw_properties_panel() -> void:
 		"ESC: Close panel"
 	]
 	
-	var inst_y = panel_y + panel_height - 100
+	var inst_y = panel_y + panel_height + 20
+	var inst_x = 20.0
+	var spacing = 30.0
+	
 	for i in range(instructions.size()):
-		draw_string(font, Vector2(panel_x + 10, inst_y + i * 20), instructions[i], Color(0.7, 0.7, 0.7))
+		draw_string(font, Vector2(inst_x, inst_y), instructions[i], Color(0.7, 0.7, 0.7))
+		# Estimate width of current line and add spacing for next (approx 6px per character)
+		inst_x += instructions[i].length() * 6.0 + spacing
 
 func _color_to_hex(color: Color) -> String:
 	return color.to_html()
