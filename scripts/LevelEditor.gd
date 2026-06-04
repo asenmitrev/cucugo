@@ -116,30 +116,35 @@ func _input(event: InputEvent) -> void:
 							_save_level()
 						else:
 							property_editing = true
+							print("DEBUG: property_editing set to true, selected_property=", selected_property)
 							# Initialize with current value based on property type
+							# For text/number properties, clear the value so user can type immediately
+							# For color properties (hex codes), keep the current value
 							match selected_property:
-								0:  # Level name
-									property_value_str = level_name
-								1:  # BG Top color
+								0:  # Level name - clear for new input
+									property_value_str = ""
+								1:  # BG Top color - keep hex value
 									property_value_str = _color_to_hex(bg_top)
-								2:  # BG Bottom color
+								2:  # BG Bottom color - keep hex value
 									property_value_str = _color_to_hex(bg_bottom)
-								3:  # Platform fill color
+								3:  # Platform fill color - keep hex value
 									property_value_str = _color_to_hex(plat_fill)
-								4:  # Width
-									property_value_str = str(int(level_width))
-								5:  # Height
-									property_value_str = str(int(level_height))
-								6:  # Scale to fit
-									property_value_str = "Yes" if scale_to_fit else "No"
-								7:  # Start P1 position
-									property_value_str = str(int(start_p1.x)) + "," + str(int(start_p1.y))
-								8:  # Start P2 position
-									property_value_str = str(int(start_p2.x)) + "," + str(int(start_p2.y))
-								9:  # Start P3 position
-									property_value_str = str(int(start_p3.x)) + "," + str(int(start_p3.y))
-								10: # Start P4 position
-									property_value_str = str(int(start_p4.x)) + "," + str(int(start_p4.y))
+								4:  # Width - clear for new input
+									property_value_str = ""
+								5:  # Height - clear for new input
+									property_value_str = ""
+								6:  # Scale to fit - clear for new input
+									property_value_str = ""
+								7:  # Start P1 position - clear for new input
+									property_value_str = ""
+								8:  # Start P2 position - clear for new input
+									property_value_str = ""
+								9:  # Start P3 position - clear for new input
+									property_value_str = ""
+								10: # Start P4 position - clear for new input
+									property_value_str = ""
+							print("DEBUG: property_value_str after init: '", property_value_str, "'")
+							update()  # Force immediate redraw to show yellow editing state
 				KEY_1:
 					current_mode = EditorMode.PLATFORM
 					update()
@@ -276,6 +281,7 @@ func _snap_to_grid(pos: Vector2) -> Vector2:
 
 func _handle_property_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		print("DEBUG: _handle_property_input called, scancode=", event.scancode, " unicode=", event.unicode)
 		# Check for special keys first (even when editing properties)
 		match event.scancode:
 			KEY_SPACE:
@@ -307,25 +313,30 @@ func _handle_property_input(event: InputEvent) -> void:
 		# Handle property editing keys
 		if event.scancode == KEY_ENTER or event.scancode == KEY_KP_ENTER:
 			# Finish editing
+			print("DEBUG: Finishing edit, applying value")
 			_apply_property_value()
 			property_editing = false
 			property_value_str = ""
 			update()
 		elif event.scancode == KEY_ESCAPE:
 			# Cancel editing
+			print("DEBUG: Canceling edit")
 			property_editing = false
 			property_value_str = ""
 			update()
 		elif event.scancode == KEY_BACKSPACE:
 			# Backspace
+			print("DEBUG: Backspace, current property_value_str='", property_value_str, "'")
 			if property_value_str.length() > 0:
 				property_value_str = property_value_str.substr(0, property_value_str.length() - 1)
 				update()
 		else:
 			# Add character
 			var ch = event.unicode
+			print("DEBUG: Adding character, unicode=", ch, " property_value_str before='", property_value_str, "'")
 			if ch >= 32 and ch <= 126:  # Printable ASCII
 				property_value_str += String("%c") % ch
+				print("DEBUG: property_value_str after='", property_value_str, "'")
 				update()
 
 func _apply_property_value() -> void:
@@ -544,7 +555,12 @@ func _draw_properties_panel() -> void:
 		var color = Color(0.8, 0.8, 1.0) if i == selected_property else Color(0.8, 0.8, 0.8)
 		
 		if property_editing and i == selected_property:
-			draw_string(font, Vector2(panel_x + 10, y), properties[i] + " > " + property_value_str + "_", color)
+			# Make editing state more visually obvious
+			var edit_color = Color(1.0, 1.0, 0.0)  # Bright yellow for editing
+			# Draw prominent background highlight for editing state
+			draw_rect(Rect2(panel_x + 2, y - 18, panel_width - 4, 24), Color(0.4, 0.4, 0.0, 0.7))
+			draw_rect(Rect2(panel_x + 2, y - 18, panel_width - 4, 24), Color(1.0, 1.0, 0.0, 0.3), false)
+			draw_string(font, Vector2(panel_x + 10, y), properties[i] + " » " + property_value_str + "█", edit_color)
 		else:
 			draw_string(font, Vector2(panel_x + 10, y), properties[i], color)
 	
