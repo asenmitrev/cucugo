@@ -22,6 +22,8 @@ export var star_count: int = 28
 # Spawn positions
 export var start_p1: Vector2 = Vector2(140, 300)
 export var start_p2: Vector2 = Vector2(570, 300)
+export var start_p3: Vector2 = Vector2(200, 200)
+export var start_p4: Vector2 = Vector2(600, 200)
 
 # Platforms: "x,y,w,h|x,y,w,h|..."
 export var platforms_str: String = ""

@@ -4,7 +4,7 @@ extends Node
 const W := 800.0
 const H := 450.0
 
-const MAIN_MENU_ITEMS := ["Controls", "Character Select", "Quit"]
+const MAIN_MENU_ITEMS := ["Controls", "Character Select", "Level Editor", "Quit"]
 var show_main_menu: bool = false
 var main_menu_sel: int = 0
 
@@ -185,7 +185,7 @@ func _input(event: InputEvent) -> void:
 
 func _request_update() -> void:
 	var scene = get_tree().get_current_scene()
-	if scene != null:
+	if scene != null and scene.has_method("update"):
 		scene.update()
 
 
@@ -198,6 +198,9 @@ func _main_menu_confirm() -> void:
 			show_main_menu = false
 			_go_to_char_select()
 		2:
+			show_main_menu = false
+			_go_to_level_editor()
+		3:
 			get_tree().quit()
 
 
@@ -210,6 +213,30 @@ func _go_to_char_select() -> void:
 	var cs: Node2D = load("res://scenes/CharSelect.tscn").instance()
 	get_tree().get_root().add_child(cs)
 	get_tree().current_scene = cs
+
+
+func _go_to_level_editor() -> void:
+	locked = false
+	show_controls = false
+	var current: Node = get_tree().current_scene
+	if current:
+		current.queue_free()
+	# Create level editor instance
+	var editor = preload("res://scripts/LevelEditor.gd").new()
+	get_tree().get_root().add_child(editor)
+	get_tree().current_scene = editor
+	# Store reference to main scene for returning
+	editor.main_scene = self
+
+
+func exit_level_editor() -> void:
+	var current: Node = get_tree().current_scene
+	if current:
+		current.queue_free()
+	# Return to main menu
+	show_main_menu = true
+	main_menu_sel = 0
+	get_tree().current_scene = self
 
 
 func _ctrl_toggle() -> void:

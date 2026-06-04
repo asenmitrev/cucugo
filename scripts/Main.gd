@@ -7,12 +7,7 @@ const SW := 90.0
 const SH := 90.0
 
 # --- Level system ---
-const LEVEL_CLASSIC = preload("res://resources/levels/classic.tres")
-const LEVEL_SKYSCRAPER = preload("res://resources/levels/skyscraper.tres")
-const LEVEL_CRATER = preload("res://resources/levels/crater.tres")
-const LEVEL_FROST = preload("res://resources/levels/frost_bridge.tres")
-const LEVEL_COLISEUM = preload("res://resources/levels/coliseum.tres")
-const _levels = [LEVEL_CLASSIC, LEVEL_SKYSCRAPER, LEVEL_CRATER, LEVEL_FROST, LEVEL_COLISEUM]
+var _levels = []
 var active_level = null
 var _prev_level_idx = -1
 var _level_flash_t = 0.0
@@ -208,6 +203,47 @@ func _pick_level() -> void:
 		_lbl_level.text = active_level.level_name
 
 
+func _load_all_levels() -> void:
+	# Clear existing levels
+	_levels.clear()
+	
+	print("DEBUG: Starting to load levels from res://resources/levels/")
+	
+	# Load all .tres files from the levels directory
+	var dir = Directory.new()
+	if dir.open("res://resources/levels/") == OK:
+		print("DEBUG: Directory opened successfully")
+		dir.list_dir_begin(true, true)
+		var file_name = dir.get_next()
+		var count = 0
+		while file_name != "":
+			print("DEBUG: Found file: ", file_name)
+			if file_name.ends_with(".tres"):
+				var filepath = "res://resources/levels/" + file_name
+				print("DEBUG: Loading level from: ", filepath)
+				var level_resource = load(filepath)
+				if level_resource != null:
+					_levels.append(level_resource)
+					count += 1
+					print("DEBUG: Successfully loaded level ", count, ": ", file_name, " - ", level_resource.level_name)
+				else:
+					print("DEBUG: Failed to load level from: ", filepath)
+			file_name = dir.get_next()
+		dir.list_dir_end()
+		print("DEBUG: Total levels loaded: ", count)
+	else:
+		print("DEBUG: ERROR: Failed to open directory res://resources/levels/")
+	
+	# If no levels were loaded, add a default one
+	if _levels.size() == 0:
+		print("WARNING: No levels found, adding default level")
+		var default_level = preload("res://resources/levels/classic.tres")
+		_levels.append(default_level)
+	
+	print("DEBUG: Final level count: ", _levels.size())
+	for i in range(_levels.size()):
+		print("DEBUG: Level ", i, ": ", _levels[i].level_name)
+
 func _ready() -> void:
 	if OS.get_name() == "X11":
 		OS.window_borderless = true
@@ -215,6 +251,9 @@ func _ready() -> void:
 		OS.window_size = OS.get_screen_size()
 	OS.window_fullscreen = true
 	MenuManager.locked = false
+	
+	# Load all levels from directory
+	_load_all_levels()
 	_pick_level()
 
 	var ui := CanvasLayer.new()
