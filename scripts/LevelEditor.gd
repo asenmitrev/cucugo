@@ -49,6 +49,11 @@ var grid_size: int = 16
 var save_message: String = ""
 var save_message_time: float = 0.0
 
+# Level selection dialog state
+var show_level_dialog: bool = false
+var level_files: Array = []
+var selected_level_index: int = 0
+
 # References
 var main_scene: Node = null
 var font: Font
@@ -73,6 +78,23 @@ func _input(event: InputEvent) -> void:
 	if property_editing:
 		_handle_property_input(event)
 		return
+	
+	# Handle level dialog input first
+	if show_level_dialog:
+		if event is InputEventKey and event.pressed and not event.echo:
+			match event.scancode:
+				KEY_ESCAPE:
+					show_level_dialog = false
+					update()
+				KEY_UP:
+					selected_level_index = wrapi(selected_level_index - 1, 0, level_files.size())
+					update()
+				KEY_DOWN:
+					selected_level_index = wrapi(selected_level_index + 1, 0, level_files.size())
+					update()
+				KEY_ENTER, KEY_KP_ENTER:
+					_load_selected_level()
+			return
 	
 	if event is InputEventKey:
 		if event.pressed and not event.echo:
@@ -102,18 +124,21 @@ func _input(event: InputEvent) -> void:
 						_save_level()
 				KEY_UP:
 					if show_properties:
-						selected_property = wrapi(selected_property - 1, 0, 12)
+						selected_property = wrapi(selected_property - 1, 0, 13)
 						update()
 				KEY_DOWN:
 					if show_properties:
-						selected_property = wrapi(selected_property + 1, 0, 12)
+						selected_property = wrapi(selected_property + 1, 0, 13)
 						update()
 				KEY_ENTER, KEY_KP_ENTER:
 					if show_properties:
 						print("DEBUG: ENTER pressed, show_properties=true, selected_property=", selected_property)
-						if selected_property == 11:  # Save map
+						if selected_property == 12:  # Save map
 							print("DEBUG: Calling _save_level()")
 							_save_level()
+						elif selected_property == 11:  # Load level
+							print("DEBUG: Loading level")
+							_load_level_dialog()
 						else:
 							property_editing = true
 							print("DEBUG: property_editing set to true, selected_property=", selected_property)
@@ -478,6 +503,73 @@ func _draw_ui() -> void:
 	# Draw properties panel if shown
 	if show_properties:
 		_draw_properties_panel()
+	
+	# Draw level selection dialog if shown
+	if show_level_dialog:
+		_draw_level_dialog()
+
+func _draw_level_dialog() -> void:
+	var dialog_width = 400
+	var dialog_height = 300
+	var dialog_x = (W - dialog_width) / 2
+	var dialog_y = (H - dialog_height) / 2
+	
+	# Dialog background
+	draw_rect(Rect2(dialog_x, dialog_y, dialog_width, dialog_height), Color(0.1, 0.1, 0.2, 0.95))
+	draw_rect(Rect2(dialog_x, dialog_y, dialog_width, dialog_height), Color(0.3, 0.3, 0.5, 0.8), false)
+	
+	# Title
+	draw_string(font, Vector2(dialog_x + 10, dialog_y + 25), "Load Level", Color(1, 1, 1))
+	
+	# Level list
+	var start_y = dialog_y + 50
+	var line_height = 25
+	var max_visible = 8
+	
+	for i in range(min(level_files.size(), max_visible)):
+		var y = start_y + i * line_height
+		var file_name = level_files[i]
+		
+		# Try to load the level to get its name
+		var levels_dir = "res://resources/levels/"
+		var level_path = levels_dir + file_name
+		var level_resource = load(level_path)
+		var display_name = file_name
+		
+		if level_resource:
+			# Try to get the level name, use file name as fallback
+			var level_name_value = level_resource.get("level_name")
+			if level_name_value != null and level_name_value != "":
+				display_name = level_name_value + " (" + file_name + ")"
+		else:
+			# If loading failed, mark the file as problematic
+			display_name = "[Error] " + file_name
+		
+		var color = Color(0.8, 0.8, 0.8)
+		if i == selected_level_index:
+			color = Color(0.2, 0.8, 0.2)
+		
+		# Draw selection background
+		if i == selected_level_index:
+			draw_rect(Rect2(dialog_x + 2, y - 18, dialog_width - 4, 24), Color(0.2, 0.4, 0.2, 0.7))
+		
+		draw_string(font, Vector2(dialog_x + 10, y), display_name, color)
+	
+	# Instructions
+	var instructions = [
+		"UP/DOWN: Select level",
+		"ENTER: Load selected level",
+		"ESC: Cancel"
+	]
+	
+	var inst_y = dialog_y + dialog_height + 20
+	var inst_x = 20.0
+	var spacing = 30.0
+	
+	for i in range(instructions.size()):
+		draw_string(font, Vector2(inst_x, inst_y), instructions[i], Color(0.7, 0.7, 0.7))
+		# Estimate width of current line and add spacing for next (approx 6px per character)
+		inst_x += instructions[i].length() * 6.0 + spacing
 
 func _draw_mode_selector() -> void:
 	# Draw mode selector panel on left side
@@ -544,6 +636,7 @@ func _draw_properties_panel() -> void:
 		"Start P2: " + str(int(start_p2.x)) + "," + str(int(start_p2.y)),
 		"Start P3: " + str(int(start_p3.x)) + "," + str(int(start_p3.y)),
 		"Start P4: " + str(int(start_p4.x)) + "," + str(int(start_p4.y)),
+		"Load level",
 		"Save map"
 	]
 	
@@ -641,25 +734,73 @@ func _save_level() -> void:
 		save_message_time = OS.get_ticks_msec() / 1000.0
 		update()
 
+func _load_level_dialog() -> void:
+	# Get all .tres files in the levels directory
+	var dir = Directory.new()
+	var levels_dir = "res://resources/levels/"
+	level_files = []
+	
+	if dir.open(levels_dir) == OK:
+		dir.list_dir_begin(true, true)
+		var file_name = dir.get_next()
+		while file_name != "":
+			if file_name.ends_with(".tres"):
+				level_files.append(file_name)
+			file_name = dir.get_next()
+		dir.list_dir_end()
+	
+	if level_files.size() == 0:
+		save_message = "No levels found in " + levels_dir
+		save_message_time = OS.get_ticks_msec() / 1000.0
+		update()
+		return
+	
+	# Show level selection dialog
+	show_level_dialog = true
+	selected_level_index = 0
+	update()
+
+func _load_selected_level() -> void:
+	if level_files.size() == 0 or selected_level_index < 0 or selected_level_index >= level_files.size():
+		return
+	
+	var levels_dir = "res://resources/levels/"
+	var selected_level_path = levels_dir + level_files[selected_level_index]
+	var level_resource = load(selected_level_path)
+	
+	if level_resource:
+		load_level(level_resource)
+		save_message = "Loaded: " + level_resource.level_name
+		save_message_time = OS.get_ticks_msec() / 1000.0
+		show_level_dialog = false
+		update()
+	else:
+		save_message = "Failed to load level: " + selected_level_path
+		save_message_time = OS.get_ticks_msec() / 1000.0
+		update()
+
 func load_level(level_def: Resource) -> void:
 	# Load level data from a LevelDef resource
 	level_name = level_def.level_name
 	
-	# Load level size properties with backward compatibility
-	if level_def.has("level_width"):
-		level_width = level_def.level_width
+	# Load level size properties - use get() and provide default values
+	var width_value = level_def.get("level_width")
+	if width_value != null:
+		level_width = width_value
 	else:
-		level_width = 800.0  # Default value
+		level_width = 800.0
 	
-	if level_def.has("level_height"):
-		level_height = level_def.level_height
+	var height_value = level_def.get("level_height")
+	if height_value != null:
+		level_height = height_value
 	else:
-		level_height = 450.0  # Default value
+		level_height = 450.0
 	
-	if level_def.has("scale_to_fit"):
-		scale_to_fit = level_def.scale_to_fit
+	var scale_value = level_def.get("scale_to_fit")
+	if scale_value != null:
+		scale_to_fit = scale_value
 	else:
-		scale_to_fit = true  # Default value
+		scale_to_fit = true
 	
 	bg_top = level_def.bg_top
 	bg_bottom = level_def.bg_bottom
@@ -675,15 +816,18 @@ func load_level(level_def: Resource) -> void:
 	start_p2 = _level_to_screen(level_def.start_p2)
 	
 	# Check if start_p3 and start_p4 exist (for backward compatibility)
-	if level_def.has("start_p3"):
-		start_p3 = _level_to_screen(level_def.start_p3)
+	# Use get() and check if it returns null
+	var p3_value = level_def.get("start_p3")
+	if p3_value != null:
+		start_p3 = _level_to_screen(p3_value)
 	else:
-		start_p3 = Vector2(200, 200)  # Default value in screen coordinates
+		start_p3 = _level_to_screen(Vector2(200, 200))
 	
-	if level_def.has("start_p4"):
-		start_p4 = _level_to_screen(level_def.start_p4)
+	var p4_value = level_def.get("start_p4")
+	if p4_value != null:
+		start_p4 = _level_to_screen(p4_value)
 	else:
-		start_p4 = Vector2(600, 200)  # Default value in screen coordinates
+		start_p4 = _level_to_screen(Vector2(600, 200))
 	
 	# Parse platforms and convert from level to screen coordinates
 	platforms = []
