@@ -7,7 +7,7 @@ const H := 450.0
 const LevelDef = preload("res://scripts/LevelDef.gd")
 
 # Editor modes
-enum EditorMode { PLATFORM, PLAYER_P1, PLAYER_P2, PLAYER_P3, PLAYER_P4 }
+enum EditorMode { PLATFORM, PLAYER_P1, PLAYER_P2, PLAYER_P3, PLAYER_P4, DELETE_PLATFORM }
 var current_mode: int = EditorMode.PLATFORM
 
 # Editor state
@@ -185,6 +185,9 @@ func _input(event: InputEvent) -> void:
 				KEY_5:
 					current_mode = EditorMode.PLAYER_P4
 					update()
+				KEY_6:
+					current_mode = EditorMode.DELETE_PLATFORM
+					update()
 	
 	if event is InputEventMouseButton:
 		if event.button_index == BUTTON_LEFT:
@@ -206,14 +209,14 @@ func _input(event: InputEvent) -> void:
 						var mode_y_start = panel_y + 40
 						var line_height = 25
 						
-						for i in range(5):  # 5 modes
+						for i in range(6):  # 6 modes
 							var mode_y = mode_y_start + i * line_height
 							var mode_y_end = mode_y + 20  # Approximate height of mode item
 							
 							if mouse_pos.y >= mode_y - 15 and mouse_pos.y <= mode_y_end:
 								# Clicked on this mode
 								current_mode = i
-								var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4"]
+								var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4", "Delete Platform"]
 								print("Mode switched to: " + mode_names[i] + " (mouse click)")
 								update()
 								break
@@ -253,6 +256,13 @@ func _input(event: InputEvent) -> void:
 					# Place P4 spawn
 					start_p4 = mouse_pos
 					update()
+				elif current_mode == EditorMode.DELETE_PLATFORM:
+					# Delete platform if clicked on one
+					for i in range(platforms.size() - 1, -1, -1):
+						if _point_in_platform(mouse_pos, platforms[i]):
+							platforms.remove(i)
+							update()
+							break
 			else:
 				# Finish drawing platform or dragging
 				if drawing_platform:
@@ -304,6 +314,14 @@ func _snap_to_grid(pos: Vector2) -> Vector2:
 		floor(pos.y / grid_size) * grid_size
 	)
 
+func _point_in_platform(point: Vector2, platform: Array) -> bool:
+	var px: float = platform[0]
+	var py: float = platform[1]
+	var pw: float = platform[2]
+	var pheight: float = platform[3]
+	
+	return point.x >= px and point.x <= px + pw and point.y >= py and point.y <= py + pheight
+
 func _handle_property_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		print("DEBUG: _handle_property_input called, scancode=", event.scancode, " unicode=", event.unicode)
@@ -332,6 +350,10 @@ func _handle_property_input(event: InputEvent) -> void:
 				return
 			KEY_5:
 				current_mode = EditorMode.PLAYER_P4
+				update()
+				return
+			KEY_6:
+				current_mode = EditorMode.DELETE_PLATFORM
 				update()
 				return
 		
@@ -484,8 +506,8 @@ func _draw_ui() -> void:
 	draw_string(font, Vector2(W - 200, 18), "ESC: Exit  SPACE: Properties  G: Grid(" + ("ON" if snap_to_grid else "OFF") + ")", Color(0.8, 0.8, 0.8))
 	
 	# Draw current mode
-	var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4"]
-	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(0.8, 0.2, 0.2), Color(0.2, 0.2, 0.8), Color(0.8, 0.8, 0.2)]
+	var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4", "Delete Platform"]
+	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(0.8, 0.2, 0.2), Color(0.2, 0.2, 0.8), Color(0.8, 0.8, 0.2), Color(1.0, 0.5, 0.2)]
 	draw_string(font, Vector2(250, 18), "Mode: " + mode_names[current_mode], mode_colors[current_mode])
 	
 	# Draw platform count
@@ -574,7 +596,7 @@ func _draw_level_dialog() -> void:
 func _draw_mode_selector() -> void:
 	# Draw mode selector panel on left side
 	var panel_width = 150
-	var panel_height = 180
+	var panel_height = 200
 	var panel_x = 10
 	var panel_y = 30
 	
@@ -591,7 +613,8 @@ func _draw_mode_selector() -> void:
 		"2. Place P1 (Green)",
 		"3. Place P2 (Red)",
 		"4. Place P3 (Blue)",
-		"5. Place P4 (Yellow)"
+		"5. Place P4 (Yellow)",
+		"6. Delete Platform"
 	]
 	
 	var start_y = panel_y + 40
@@ -608,7 +631,7 @@ func _draw_mode_selector() -> void:
 		draw_string(font, Vector2(panel_x + 10, y), modes[i], color)
 	
 	# Instructions
-	draw_string(font, Vector2(panel_x + 10, panel_y + panel_height - 25), "Press 1-5 to switch", Color(0.7, 0.7, 0.7))
+	draw_string(font, Vector2(panel_x + 10, panel_y + panel_height - 25), "Press 1-6 to switch", Color(0.7, 0.7, 0.7))
 
 func _draw_properties_panel() -> void:
 	var panel_width = 300
