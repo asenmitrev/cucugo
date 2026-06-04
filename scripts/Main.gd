@@ -527,10 +527,8 @@ func _update_player(i: int, dt: float) -> void:
 			p["vel"] = Vector2.ZERO
 			p["anim_t"] = 0.0
 			p["anim_frame"] = 0
-		# Death check: if player is below level bottom + 100 pixels
-		var scaling_factor: float = p.get("scaling_factor", 1.0)
-		var level_bottom_screen = (H - active_level.level_height * scaling_factor) / 2 + active_level.level_height * scaling_factor
-		if p["pos"].y > level_bottom_screen + 100.0:
+		# Death check: if player falls below screen + 100 pixels
+		if p["pos"].y > H + 100.0:
 			p["dead"] = true
 			p["stunned"] = false
 			p["invulnerable"] = false
@@ -554,10 +552,8 @@ func _update_player(i: int, dt: float) -> void:
 			p["anim_t"] = 0.0
 			p["anim_frame"] = 0
 			p["state"] = "idle"
-		# Death check: if player is below level bottom + 100 pixels
-		var scaling_factor2: float = p.get("scaling_factor", 1.0)
-		var level_bottom_screen2 = (H - active_level.level_height * scaling_factor2) / 2 + active_level.level_height * scaling_factor2
-		if p["pos"].y > level_bottom_screen2 + 100.0:
+		# Death check: if player falls below screen + 100 pixels
+		if p["pos"].y > H + 100.0:
 			p["dead"] = true
 			p["getting_up"] = false
 			p["invulnerable"] = false
@@ -734,21 +730,18 @@ func _update_player(i: int, dt: float) -> void:
 	p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 	p["pos"] += p["vel"] * dt
 	
-	# Constrain player to visible level area in screen coordinates
+	# Constrain player horizontally to visible level area in screen coordinates
+	# Allow vertical movement above and below screen (death handled separately)
 	var scaling_factor: float = p.get("scaling_factor", 1.0)
 	var level_left_screen = (W - active_level.level_width * scaling_factor) / 2
 	var level_right_screen = level_left_screen + active_level.level_width * scaling_factor
-	var level_top_screen = (H - active_level.level_height * scaling_factor) / 2
-	var level_bottom_screen = level_top_screen + active_level.level_height * scaling_factor
 	
 	# Account for player sprite size
 	var player_left_bound = level_left_screen - def.body_offset_x * scaling_factor
 	var player_right_bound = level_right_screen - def.body_offset_x * scaling_factor - def.body_w * scaling_factor
-	var player_top_bound = level_top_screen - def.body_offset_y * scaling_factor
-	var player_bottom_bound = level_bottom_screen - def.body_offset_y * scaling_factor - def.body_h * scaling_factor
 	
 	p["pos"].x = clamp(p["pos"].x, player_left_bound, player_right_bound)
-	p["pos"].y = clamp(p["pos"].y, player_top_bound, player_bottom_bound)
+	# No vertical clamping - players can jump above screen and fall below it
 
 	if not p["on_gnd"]:
 		p["state"] = "jump"
