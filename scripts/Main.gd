@@ -1065,6 +1065,11 @@ func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 	p["on_gnd"] = false
 	var plats: Array = active_level._get_platforms()
 	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	var _pd: CharacterDef = p["def"]
+	var _bx: float = p["pos"].x + _pd.body_offset_x * scaling_factor
+	var _by: float = p["pos"].y + _pd.body_offset_y * scaling_factor
+	var _bw: float = _pd.body_w * scaling_factor
+	var _bh: float = _pd.body_h * scaling_factor
 	
 	for plat in plats:
 		# Convert platform coordinates from level to screen space
@@ -1074,33 +1079,56 @@ func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 		var px: float = screen_pos.x
 		var py: float = screen_pos.y
 		var pw: float = screen_size.x
-		var _pd: CharacterDef = p["def"]
-		var _bx: float = p["pos"].x + _pd.body_offset_x * scaling_factor
-		var _by: float = p["pos"].y + _pd.body_offset_y * scaling_factor
-		var bottom: float = _by + _pd.body_h * scaling_factor
-		var prev_bottom: float = bottom - p["vel"].y * dt
+		var ph: float = screen_size.y
 		
-		# Debug logging
-		var debug_collision = true
-		if debug_collision:
-			print("Platform: py=", py, " pw=", pw)
-			print("Character: pos.y=", p["pos"].y, " _by=", _by, " bottom=", bottom, " prev_bottom=", prev_bottom)
-			print("Body dims: h=", _pd.body_h, " offset_y=", _pd.body_offset_y, " scaled h=", _pd.body_h * scaling_factor)
-			print("Conditions: vel.y=", p["vel"].y, " left=", (_bx + _pd.body_w * scaling_factor > px + 10.0 * scaling_factor), 
-				" right=", (_bx < px + pw - 10.0 * scaling_factor), " bottom>=py=", (bottom >= py), 
-				" prev_bottom<=py+margin=", (prev_bottom <= py + 10.0 * scaling_factor))
+		# Calculate character rectangle edges
+		var left: float = _bx
+		var right: float = _bx + _bw
+		var top: float = _by
+		var bottom: float = _by + _bh
 		
-		if p["vel"].y >= 0.0 \
-				and _bx + _pd.body_w * scaling_factor > px + 10.0 * scaling_factor \
-				and _bx < px + pw - 10.0 * scaling_factor \
-				and bottom >= py \
-				and prev_bottom <= py + 10.0 * scaling_factor:
-			p["pos"].y = py - _pd.body_h * scaling_factor - _pd.body_offset_y * scaling_factor
+		# Calculate platform rectangle edges
+		var plat_left: float = px
+		var plat_right: float = px + pw
+		var plat_top: float = py
+		var plat_bottom: float = py + ph
+		
+		# Check for overlap
+		var overlap_x: bool = right > plat_left and left < plat_right
+		var overlap_y: bool = bottom > plat_top and top < plat_bottom
+		
+		if not (overlap_x and overlap_y):
+			continue  # No collision
+		
+		# Calculate penetration depths
+		var penetration_left: float = right - plat_left
+		var penetration_right: float = plat_right - left
+		var penetration_top: float = bottom - plat_top
+		var penetration_bottom: float = plat_bottom - top
+		
+		# Find the smallest penetration to resolve collision
+		var min_penetration: float = min(penetration_left, penetration_right)
+		min_penetration = min(min_penetration, penetration_top)
+		min_penetration = min(min_penetration, penetration_bottom)
+		
+		# Resolve collision based on smallest penetration
+		if min_penetration == penetration_top and p["vel"].y >= 0.0:
+			# Landing on top of platform
+			p["pos"].y = plat_top - _bh - _pd.body_offset_y * scaling_factor
 			p["vel"].y = 0.0
 			p["on_gnd"] = true
-			
-			if debug_collision:
-				print("COLLISION! New pos.y=", p["pos"].y)
+		elif min_penetration == penetration_bottom and p["vel"].y <= 0.0:
+			# Hitting bottom of platform (jumping into it)
+			p["pos"].y = plat_bottom - _pd.body_offset_y * scaling_factor
+			p["vel"].y = 0.0
+		elif min_penetration == penetration_left and p["vel"].x > 0.0:
+			# Hitting left side of platform (moving right)
+			p["pos"].x = plat_left - _bw - _pd.body_offset_x * scaling_factor
+			p["vel"].x = 0.0
+		elif min_penetration == penetration_right and p["vel"].x < 0.0:
+			# Hitting right side of platform (moving left)
+			p["pos"].x = plat_right - _pd.body_offset_x * scaling_factor
+			p["vel"].x = 0.0
 
 
 func _collide_effect_plats(ae: Dictionary) -> void:
