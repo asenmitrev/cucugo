@@ -339,6 +339,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"def": def,
 		"name": def.display_name, "pos": screen_start_pos, "vel": Vector2.ZERO,
 		"right": i == 0 or i == 2, "on_gnd": false,
+		"on_left_wall": false, "on_right_wall": false,
 		"state": "idle",
 		"dead": false, "death_t": 0.0,
 		"anim_t": 0.0, "anim_frame": 0, "prev_state": "idle",
@@ -724,8 +725,13 @@ func _update_player(i: int, dt: float) -> void:
 	else:
 		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
 
-	if Input.is_action_just_pressed(p["action_jump"]) and p["on_gnd"]:
+	if Input.is_action_just_pressed(p["action_jump"]) and (p["on_gnd"] or p["on_left_wall"] or p["on_right_wall"]):
 		p["vel"].y = def.jump_vel * p.get("scaling_factor", 1.0)
+		# Add wall jump push away from wall
+		if p["on_left_wall"]:
+			p["vel"].x = def.speed * 0.8 * p.get("scaling_factor", 1.0)  # Push right
+		elif p["on_right_wall"]:
+			p["vel"].x = -def.speed * 0.8 * p.get("scaling_factor", 1.0)  # Push left
 
 	p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 	p["pos"] += p["vel"] * dt
@@ -1056,6 +1062,8 @@ func _collide_trap_plats(trap: Dictionary) -> void:
 
 func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 	p["on_gnd"] = false
+	p["on_left_wall"] = false
+	p["on_right_wall"] = false
 	var plats: Array = active_level._get_platforms()
 	var scaling_factor: float = p.get("scaling_factor", 1.0)
 	var _pd: CharacterDef = p["def"]
@@ -1118,10 +1126,12 @@ func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 			# Hitting left side of platform (moving right)
 			p["pos"].x = plat_left - _bw - _pd.body_offset_x * scaling_factor
 			p["vel"].x = 0.0
+			p["on_left_wall"] = true
 		elif min_penetration == penetration_right and p["vel"].x < 0.0:
 			# Hitting right side of platform (moving left)
 			p["pos"].x = plat_right - _pd.body_offset_x * scaling_factor
 			p["vel"].x = 0.0
+			p["on_right_wall"] = true
 
 
 func _collide_effect_plats(ae: Dictionary) -> void:
