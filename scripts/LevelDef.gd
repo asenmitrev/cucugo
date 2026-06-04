@@ -3,6 +3,11 @@ class_name LevelDef
 
 export var level_name: String = "Untitled"
 
+# Level size properties
+export var level_width: float = 800.0
+export var level_height: float = 450.0
+export var scale_to_fit: bool = true
+
 # Background
 export var bg_top: Color = Color(0.07, 0.08, 0.16)
 export var bg_bottom: Color = Color(0.10, 0.12, 0.22)
@@ -38,3 +43,49 @@ func _get_platforms() -> Array:
 		if parts.size() == 4:
 			out.append([float(parts[0]), float(parts[1]), float(parts[2]), float(parts[3])])
 	return out
+
+# Calculate scaling factor to fit level on screen
+func get_scaling_factor(screen_width: float, screen_height: float) -> float:
+	if not scale_to_fit:
+		return 1.0
+	
+	var width_scale = screen_width / level_width
+	var height_scale = screen_height / level_height
+	
+	# Use the smaller scale to ensure level fits entirely on screen
+	return min(width_scale, height_scale)
+
+# Get screen position from level coordinates
+func level_to_screen(position: Vector2, scaling_factor: float) -> Vector2:
+	if not scale_to_fit:
+		return position
+	
+	# Center the level on screen
+	var offset_x = (800.0 - level_width * scaling_factor) / 2.0
+	var offset_y = (450.0 - level_height * scaling_factor) / 2.0
+	
+	return Vector2(
+		position.x * scaling_factor + offset_x,
+		position.y * scaling_factor + offset_y
+	)
+
+# Get screen size from level size
+func level_to_screen_size(size: Vector2, scaling_factor: float) -> Vector2:
+	if not scale_to_fit:
+		return size
+	
+	return size * scaling_factor
+
+# Get level coordinates from screen position
+func screen_to_level(screen_pos: Vector2, scaling_factor: float) -> Vector2:
+	if not scale_to_fit:
+		return screen_pos
+	
+	# Center the level on screen
+	var offset_x = (800.0 - level_width * scaling_factor) / 2.0
+	var offset_y = (450.0 - level_height * scaling_factor) / 2.0
+	
+	return Vector2(
+		(screen_pos.x - offset_x) / scaling_factor,
+		(screen_pos.y - offset_y) / scaling_factor
+	)

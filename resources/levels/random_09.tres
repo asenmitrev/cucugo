@@ -1,0 +1,25 @@
+[gd_resource type="Resource" load_steps=2 format=2]
+
+[ext_resource path="res://scripts/LevelDef.gd" type="Script" id=1]
+
+[resource]
+script = ExtResource( 1 )
+level_name = "random_09"
+level_width = 1600.0
+level_height = 900.0
+scale_to_fit = true
+bg_top = Color( 0.02, 0.02, 0.08, 1 )
+bg_bottom = Color( 0.05, 0.05, 0.15, 1 )
+bg_split = 0.48
+plat_fill = Color( 0.20, 0.20, 0.35, 1 )
+plat_highlight = Color( 0.45, 0.45, 0.75, 1 )
+plat_shadow = Color( 0.15, 0.15, 0.25, 1 )
+plat_dark = Color( 0, 0, 0, 0.22 )
+star_seed = 840
+star_color = Color( 0.9, 0.9, 1.0, 0.7 )
+star_count = 37
+start_p1 = Vector2( 338.1, 211.1 )
+start_p2 = Vector2( 1148.3, 306.5 )
+start_p3 = Vector2( 441.1, 672.3 )
+start_p4 = Vector2( 1144.0, 628.8 )
+platforms_str = "0.0,850.0,1600.0,14.0|183.8,598.0,112.1,14.0|247.9,699.4,188.0,14.0|1118.0,138.5,142.1,14.0|909.1,346.3,249.3,14.0|683.9,269.4,248.9,14.0|153.5,488.3,83.3,14.0|97.4,401.8,188.2,14.0|340.5,289.2,112.6,14.0|582.0,387.6,107.3,14.0|528.3,468.7,223.5,14.0|375.9,569.6,198.5,14.0|976.8,237.8,222.4,14.0|858.4,433.1,151.1,14.0|723.4,599.3,176.9,14.0|1230.0,473.3,237.3,14.0"

@@ -34,6 +34,11 @@ var start_p2: Vector2 = Vector2(570, 300)
 var start_p3: Vector2 = Vector2(200, 200)
 var start_p4: Vector2 = Vector2(600, 200)
 
+# Level size properties (new)
+var level_width: float = 800.0
+var level_height: float = 450.0
+var scale_to_fit: bool = true
+
 # UI state
 var show_properties: bool = false
 var selected_property: int = 0
@@ -97,16 +102,16 @@ func _input(event: InputEvent) -> void:
 						_save_level()
 				KEY_UP:
 					if show_properties:
-						selected_property = wrapi(selected_property - 1, 0, 9)
+						selected_property = wrapi(selected_property - 1, 0, 12)
 						update()
 				KEY_DOWN:
 					if show_properties:
-						selected_property = wrapi(selected_property + 1, 0, 9)
+						selected_property = wrapi(selected_property + 1, 0, 12)
 						update()
 				KEY_ENTER, KEY_KP_ENTER:
 					if show_properties:
 						print("DEBUG: ENTER pressed, show_properties=true, selected_property=", selected_property)
-						if selected_property == 8:  # Save map
+						if selected_property == 11:  # Save map
 							print("DEBUG: Calling _save_level()")
 							_save_level()
 						else:
@@ -121,13 +126,19 @@ func _input(event: InputEvent) -> void:
 									property_value_str = _color_to_hex(bg_bottom)
 								3:  # Platform fill color
 									property_value_str = _color_to_hex(plat_fill)
-								4:  # Start P1 position
+								4:  # Width
+									property_value_str = str(int(level_width))
+								5:  # Height
+									property_value_str = str(int(level_height))
+								6:  # Scale to fit
+									property_value_str = "Yes" if scale_to_fit else "No"
+								7:  # Start P1 position
 									property_value_str = str(int(start_p1.x)) + "," + str(int(start_p1.y))
-								5:  # Start P2 position
+								8:  # Start P2 position
 									property_value_str = str(int(start_p2.x)) + "," + str(int(start_p2.y))
-								6:  # Start P3 position
+								9:  # Start P3 position
 									property_value_str = str(int(start_p3.x)) + "," + str(int(start_p3.y))
-								7:  # Start P4 position
+								10: # Start P4 position
 									property_value_str = str(int(start_p4.x)) + "," + str(int(start_p4.y))
 				KEY_1:
 					current_mode = EditorMode.PLATFORM
@@ -334,27 +345,44 @@ func _apply_property_value() -> void:
 		3:  # Platform fill color
 			plat_fill = Color(property_value_str)
 			update()
-		4:  # Start P1 position
+		4:  # Width
+			var width_val = float(property_value_str)
+			if width_val > 0:
+				level_width = width_val
+				update()
+		5:  # Height
+			var height_val = float(property_value_str)
+			if height_val > 0:
+				level_height = height_val
+				update()
+		6:  # Scale to fit
+			var lower_val = property_value_str.to_lower()
+			if lower_val == "yes" or lower_val == "true" or lower_val == "1":
+				scale_to_fit = true
+			elif lower_val == "no" or lower_val == "false" or lower_val == "0":
+				scale_to_fit = false
+			update()
+		7:  # Start P1 position
 			var parts = property_value_str.split(",")
 			if parts.size() == 2:
 				start_p1 = Vector2(float(parts[0]), float(parts[1]))
 				update()
-		5:  # Start P2 position
+		8:  # Start P2 position
 			var parts = property_value_str.split(",")
 			if parts.size() == 2:
 				start_p2 = Vector2(float(parts[0]), float(parts[1]))
 				update()
-		6:  # Start P3 position
+		9:  # Start P3 position
 			var parts = property_value_str.split(",")
 			if parts.size() == 2:
 				start_p3 = Vector2(float(parts[0]), float(parts[1]))
 				update()
-		7:  # Start P4 position
+		10: # Start P4 position
 			var parts = property_value_str.split(",")
 			if parts.size() == 2:
 				start_p4 = Vector2(float(parts[0]), float(parts[1]))
 				update()
-		8:  # Save map
+		11: # Save map
 			_save_level()
 
 func _draw() -> void:
@@ -498,6 +526,9 @@ func _draw_properties_panel() -> void:
 		"BG Top: " + _color_to_hex(bg_top),
 		"BG Bottom: " + _color_to_hex(bg_bottom),
 		"Platform Fill: " + _color_to_hex(plat_fill),
+		"Width: " + str(int(level_width)),
+		"Height: " + str(int(level_height)),
+		"Scale to fit: " + ("Yes" if scale_to_fit else "No"),
 		"Start P1: " + str(int(start_p1.x)) + "," + str(int(start_p1.y)),
 		"Start P2: " + str(int(start_p2.x)) + "," + str(int(start_p2.y)),
 		"Start P3: " + str(int(start_p3.x)) + "," + str(int(start_p3.y)),
@@ -534,16 +565,22 @@ func _color_to_hex(color: Color) -> String:
 
 func _save_level() -> void:
 	print("DEBUG: _save_level() called")
-	# Create platforms string
+	# Create platforms string - convert from screen to level coordinates
 	var platform_strings = []
 	for plat in platforms:
-		platform_strings.append(str(int(plat[0])) + "," + str(int(plat[1])) + "," + str(int(plat[2])) + "," + str(int(plat[3])))
+		# Convert from screen to level coordinates
+		var level_pos = _screen_to_level(Vector2(plat[0], plat[1]))
+		var level_size = _screen_to_level_size(Vector2(plat[2], plat[3]))
+		platform_strings.append(str(int(level_pos.x)) + "," + str(int(level_pos.y)) + "," + str(int(level_size.x)) + "," + str(int(level_size.y)))
 	
 	var platforms_str = "|".join(platform_strings)
 	
 	# Create a new LevelDef resource
 	var level_def = LevelDef.new()
 	level_def.level_name = level_name
+	level_def.level_width = level_width
+	level_def.level_height = level_height
+	level_def.scale_to_fit = scale_to_fit
 	level_def.bg_top = bg_top
 	level_def.bg_bottom = bg_bottom
 	level_def.bg_split = bg_split
@@ -554,10 +591,13 @@ func _save_level() -> void:
 	level_def.star_seed = 42
 	level_def.star_color = Color(1, 1, 1, 0.45)
 	level_def.star_count = 28
-	level_def.start_p1 = start_p1
-	level_def.start_p2 = start_p2
-	level_def.start_p3 = start_p3
-	level_def.start_p4 = start_p4
+	
+	# Convert start positions from screen to level coordinates
+	level_def.start_p1 = _screen_to_level(start_p1)
+	level_def.start_p2 = _screen_to_level(start_p2)
+	level_def.start_p3 = _screen_to_level(start_p3)
+	level_def.start_p4 = _screen_to_level(start_p4)
+	
 	level_def.platforms_str = platforms_str
 	
 	# Generate filename from level name
@@ -583,6 +623,23 @@ func _save_level() -> void:
 func load_level(level_def: Resource) -> void:
 	# Load level data from a LevelDef resource
 	level_name = level_def.level_name
+	
+	# Load level size properties with backward compatibility
+	if level_def.has("level_width"):
+		level_width = level_def.level_width
+	else:
+		level_width = 800.0  # Default value
+	
+	if level_def.has("level_height"):
+		level_height = level_def.level_height
+	else:
+		level_height = 450.0  # Default value
+	
+	if level_def.has("scale_to_fit"):
+		scale_to_fit = level_def.scale_to_fit
+	else:
+		scale_to_fit = true  # Default value
+	
 	bg_top = level_def.bg_top
 	bg_bottom = level_def.bg_bottom
 	bg_split = level_def.bg_split
@@ -590,24 +647,76 @@ func load_level(level_def: Resource) -> void:
 	plat_highlight = level_def.plat_highlight
 	plat_shadow = level_def.plat_shadow
 	plat_dark = level_def.plat_dark
-	start_p1 = level_def.start_p1
-	start_p2 = level_def.start_p2
+	
+	# Convert start positions from level to screen coordinates
+	var scaling_factor = _get_scaling_factor()
+	start_p1 = _level_to_screen(level_def.start_p1)
+	start_p2 = _level_to_screen(level_def.start_p2)
 	
 	# Check if start_p3 and start_p4 exist (for backward compatibility)
 	if level_def.has("start_p3"):
-		start_p3 = level_def.start_p3
+		start_p3 = _level_to_screen(level_def.start_p3)
 	else:
-		start_p3 = Vector2(200, 200)  # Default value
+		start_p3 = Vector2(200, 200)  # Default value in screen coordinates
 	
 	if level_def.has("start_p4"):
-		start_p4 = level_def.start_p4
+		start_p4 = _level_to_screen(level_def.start_p4)
 	else:
-		start_p4 = Vector2(600, 200)  # Default value
+		start_p4 = Vector2(600, 200)  # Default value in screen coordinates
 	
-	# Parse platforms
+	# Parse platforms and convert from level to screen coordinates
 	platforms = []
 	var plat_array = level_def._get_platforms()
 	for plat in plat_array:
-		platforms.append([plat[0], plat[1], plat[2], plat[3]])
+		# Convert from level to screen coordinates
+		var screen_x = (plat[0] * scaling_factor) + _get_level_offset_x(scaling_factor)
+		var screen_y = (plat[1] * scaling_factor) + _get_level_offset_y(scaling_factor)
+		var screen_w = plat[2] * scaling_factor
+		var screen_h = plat[3] * scaling_factor
+		platforms.append([screen_x, screen_y, screen_w, screen_h])
 	
 	update()
+
+# Helper functions for coordinate conversion
+func _get_scaling_factor() -> float:
+	if not scale_to_fit:
+		return 1.0
+	var width_scale = W / level_width
+	var height_scale = H / level_height
+	return min(width_scale, height_scale)
+
+func _get_level_offset_x(scaling_factor: float) -> float:
+	return (W - level_width * scaling_factor) / 2.0
+
+func _get_level_offset_y(scaling_factor: float) -> float:
+	return (H - level_height * scaling_factor) / 2.0
+
+# Convert screen coordinates to level coordinates
+func _screen_to_level(position: Vector2) -> Vector2:
+	var scaling_factor = _get_scaling_factor()
+	var offset_x = _get_level_offset_x(scaling_factor)
+	var offset_y = _get_level_offset_y(scaling_factor)
+	return Vector2(
+		(position.x - offset_x) / scaling_factor,
+		(position.y - offset_y) / scaling_factor
+	)
+
+# Convert screen size to level size
+func _screen_to_level_size(size: Vector2) -> Vector2:
+	var scaling_factor = _get_scaling_factor()
+	return size / scaling_factor
+
+# Convert level coordinates to screen coordinates
+func _level_to_screen(position: Vector2) -> Vector2:
+	var scaling_factor = _get_scaling_factor()
+	var offset_x = _get_level_offset_x(scaling_factor)
+	var offset_y = _get_level_offset_y(scaling_factor)
+	return Vector2(
+		position.x * scaling_factor + offset_x,
+		position.y * scaling_factor + offset_y
+	)
+
+# Convert level size to screen size
+func _level_to_screen_size(size: Vector2) -> Vector2:
+	var scaling_factor = _get_scaling_factor()
+	return size * scaling_factor

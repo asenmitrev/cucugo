@@ -317,7 +317,12 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	spr.centered = false
 	spr.hframes = 2
 	spr.vframes = 2
-	spr.scale = Vector2(SW / 128.0, SH / 128.0)
+	
+	# Calculate scaling factor for this level
+	var scaling_factor: float = active_level.get_scaling_factor(W, H)
+	
+	# Scale player size proportionally
+	spr.scale = Vector2(SW / 128.0, SH / 128.0) * scaling_factor
 	add_child(spr)
 
 	var tex: Dictionary = _load_tex(def.char_name)
@@ -326,9 +331,13 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	var start_pos: Vector2 = active_level.start_p1 if i == 0 else active_level.start_p2
 	if i == 2: start_pos = active_level.start_p1 + Vector2(40, -40)
 	if i == 3: start_pos = active_level.start_p2 + Vector2(-40, -40)
+	
+	# Convert start position from level to screen coordinates
+	var screen_start_pos = active_level.level_to_screen(start_pos, scaling_factor)
+	
 	pl[i] = {
 		"def": def,
-		"name": def.display_name, "pos": start_pos, "vel": Vector2.ZERO,
+		"name": def.display_name, "pos": screen_start_pos, "vel": Vector2.ZERO,
 		"right": i == 0 or i == 2, "on_gnd": false,
 		"state": "idle",
 		"dead": false, "death_t": 0.0,
@@ -348,6 +357,7 @@ func _init_player(i: int, def: CharacterDef) -> void:
 		"action_skill2": slot + "_skill2",
 		"action_skill3": slot + "_skill3",
 		"original_def":  def,
+		"scaling_factor": scaling_factor,  # Store scaling factor for this player
 	}
 
 
@@ -360,6 +370,16 @@ func _anim_spd(def: CharacterDef, state: String) -> float:
 		"stunned": return def.anim_dead
 		"getting_up": return def.anim_getting_up
 	return 0.15
+
+# Update sprite position based on level coordinates
+func _update_sprite_position(i: int) -> void:
+	var p: Dictionary = pl[i]
+	if p.empty() or not p.has("spr"):
+		return
+	
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	var screen_pos = active_level.level_to_screen(p["level_pos"], scaling_factor)
+	p["spr"].position = screen_pos
 
 
 func _process(delta: float) -> void:
@@ -485,7 +505,7 @@ func _update_player(i: int, dt: float) -> void:
 		p["stomp_active"] = false
 		p["invisible"] = false
 		p["invisible_t"] = 0.0
-		p["vel"].y += GRAV * dt
+		p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 		p["pos"] += p["vel"] * dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
 		p["death_t"] += dt
@@ -495,7 +515,7 @@ func _update_player(i: int, dt: float) -> void:
 		p["casting_skill"] = -1
 		p["active_effects"] = []
 		p["stomp_active"] = false
-		p["vel"].y += GRAV * dt
+		p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 		p["pos"] += p["vel"] * dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 4.0 * dt)
 		p["death_t"] += dt
@@ -507,7 +527,10 @@ func _update_player(i: int, dt: float) -> void:
 			p["vel"] = Vector2.ZERO
 			p["anim_t"] = 0.0
 			p["anim_frame"] = 0
-		if p["pos"].y > H + 100.0:
+		# Death check: if player is below level bottom + 100 pixels
+		var scaling_factor: float = p.get("scaling_factor", 1.0)
+		var level_bottom_screen = (H - active_level.level_height * scaling_factor) / 2 + active_level.level_height * scaling_factor
+		if p["pos"].y > level_bottom_screen + 100.0:
 			p["dead"] = true
 			p["stunned"] = false
 			p["invulnerable"] = false
@@ -521,7 +544,7 @@ func _update_player(i: int, dt: float) -> void:
 		p["active_effects"] = []
 		p["getting_up_t"] += dt
 		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
-		p["vel"].y += GRAV * dt
+		p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 		p["pos"] += p["vel"] * dt
 		_collide_plats(p, dt)
 		if p["getting_up_t"] >= p["def"].anim_getting_up * 4.0:
@@ -531,7 +554,10 @@ func _update_player(i: int, dt: float) -> void:
 			p["anim_t"] = 0.0
 			p["anim_frame"] = 0
 			p["state"] = "idle"
-		if p["pos"].y > H + 100.0:
+		# Death check: if player is below level bottom + 100 pixels
+		var scaling_factor2: float = p.get("scaling_factor", 1.0)
+		var level_bottom_screen2 = (H - active_level.level_height * scaling_factor2) / 2 + active_level.level_height * scaling_factor2
+		if p["pos"].y > level_bottom_screen2 + 100.0:
 			p["dead"] = true
 			p["getting_up"] = false
 			p["invulnerable"] = false
@@ -581,7 +607,8 @@ func _update_player(i: int, dt: float) -> void:
 				var o: Dictionary = pl[oi]
 				if not o["dead"] and not o.get("invulnerable", false):
 					var odef: CharacterDef = o["def"]
-					var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x, odef.body_offset_y), Vector2(odef.body_w, odef.body_h))
+					var o_scaling_factor: float = o.get("scaling_factor", 1.0)
+					var o_rect := Rect2(o["pos"] + Vector2(odef.body_offset_x * o_scaling_factor, odef.body_offset_y * o_scaling_factor), Vector2(odef.body_w * o_scaling_factor, odef.body_h * o_scaling_factor))
 					var eff_rect: Rect2 = ae["rect"]
 					if eff_rect.intersects(o_rect):
 						ae["hit"] = true
@@ -623,9 +650,10 @@ func _update_player(i: int, dt: float) -> void:
 				ae["child_t"] -= ae["skill"].child_spawn_interval
 				ae["child_spawn_count"] += 1
 				var center: Vector2 = ae["rect"].position + ae["rect"].size * 0.5
-				var cx: float = center.x - csk.effect_width * 0.5
-				var cy: float = center.y - csk.effect_height * 0.5
-				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), ae["facing"]))
+				var child_scaling_factor: float = ae.get("scaling_factor", 1.0)
+				var cx: float = center.x - csk.effect_width * 0.5 * child_scaling_factor
+				var cy: float = center.y - csk.effect_height * 0.5 * child_scaling_factor
+				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), ae["facing"], child_scaling_factor))
 
 		if csk != null and ae.get("ground_hit", false):
 			var limit: int = ae["skill"].child_spawn_limit
@@ -634,9 +662,10 @@ func _update_player(i: int, dt: float) -> void:
 			for j in range(count):
 				var spread: float = lerp(-1.0, 1.0, float(j) / float(count - 1)) if count > 1 else ae["facing"]
 				var child_dir: float = spread
-				var cx: float = center.x - csk.effect_width * 0.5
-				var cy: float = center.y - csk.effect_height * 0.5
-				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), child_dir))
+				var child_scaling_factor: float = ae.get("scaling_factor", 1.0)
+				var cx: float = center.x - csk.effect_width * 0.5 * child_scaling_factor
+				var cy: float = center.y - csk.effect_height * 0.5 * child_scaling_factor
+				new_effects.append(_make_effect_dict(csk, Vector2(cx, cy), child_dir, child_scaling_factor))
 			ae["t"] = ae["skill"].effect_duration
 			ae["ground_hit"] = false
 
@@ -664,11 +693,12 @@ func _update_player(i: int, dt: float) -> void:
 		var _psk = _sk_all[k]
 		if _psk != null and _psk.is_passive and p["skill_cds"][k] <= 0.0:
 			var _phx: float
+			var scaling_factor: float = p.get("scaling_factor", 1.0)
 			if p["right"]:
-				_phx = p["pos"].x + _psk.effect_offset_x
+				_phx = p["pos"].x + _psk.effect_offset_x * scaling_factor
 			else:
-				_phx = p["pos"].x + SW - _psk.effect_offset_x - _psk.effect_width
-			p["active_effects"].append(_make_effect_dict(_psk, Vector2(_phx, p["pos"].y + _psk.effect_offset_y), 1.0 if p["right"] else -1.0))
+				_phx = p["pos"].x + SW - _psk.effect_offset_x * scaling_factor - _psk.effect_width * scaling_factor
+			p["active_effects"].append(_make_effect_dict(_psk, Vector2(_phx, p["pos"].y + _psk.effect_offset_y * scaling_factor), 1.0 if p["right"] else -1.0, scaling_factor))
 			p["skill_cds"][k] = _psk.cooldown
 
 	if p["casting_skill"] < 0:
@@ -690,19 +720,35 @@ func _update_player(i: int, dt: float) -> void:
 	if p["launch_t"] > 0.0:
 		p["launch_t"] = max(0.0, p["launch_t"] - dt)
 	elif Input.is_action_pressed(p["action_left"]):
-		p["vel"].x = -def.speed
+		p["vel"].x = -def.speed * p.get("scaling_factor", 1.0)
 		p["right"] = false
 	elif Input.is_action_pressed(p["action_right"]):
-		p["vel"].x = def.speed
+		p["vel"].x = def.speed * p.get("scaling_factor", 1.0)
 		p["right"] = true
 	else:
 		p["vel"].x = lerp(p["vel"].x, 0.0, 14.0 * dt)
 
 	if Input.is_action_just_pressed(p["action_jump"]) and p["on_gnd"]:
-		p["vel"].y = def.jump_vel
+		p["vel"].y = def.jump_vel * p.get("scaling_factor", 1.0)
 
-	p["vel"].y += GRAV * dt
+	p["vel"].y += GRAV * p.get("scaling_factor", 1.0) * dt
 	p["pos"] += p["vel"] * dt
+	
+	# Constrain player to visible level area in screen coordinates
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	var level_left_screen = (W - active_level.level_width * scaling_factor) / 2
+	var level_right_screen = level_left_screen + active_level.level_width * scaling_factor
+	var level_top_screen = (H - active_level.level_height * scaling_factor) / 2
+	var level_bottom_screen = level_top_screen + active_level.level_height * scaling_factor
+	
+	# Account for player sprite size
+	var player_left_bound = level_left_screen - def.body_offset_x * scaling_factor
+	var player_right_bound = level_right_screen - def.body_offset_x * scaling_factor - def.body_w * scaling_factor
+	var player_top_bound = level_top_screen - def.body_offset_y * scaling_factor
+	var player_bottom_bound = level_bottom_screen - def.body_offset_y * scaling_factor - def.body_h * scaling_factor
+	
+	p["pos"].x = clamp(p["pos"].x, player_left_bound, player_right_bound)
+	p["pos"].y = clamp(p["pos"].y, player_top_bound, player_bottom_bound)
 
 	if not p["on_gnd"]:
 		p["state"] = "jump"
@@ -719,16 +765,18 @@ func _update_player(i: int, dt: float) -> void:
 			if not o["dead"] and not o.get("invulnerable", false):
 				var _stomp_pd: CharacterDef = p["def"]
 				var _stomp_od: CharacterDef = o["def"]
+				var p_scaling_factor: float = p.get("scaling_factor", 1.0)
 				var _stomp_foot := Rect2(
-					p["pos"].x + _stomp_pd.body_offset_x,
-					p["pos"].y + _stomp_pd.body_offset_y + _stomp_pd.body_h - 12.0,
-					_stomp_pd.body_w, 15.0)
-				var _stomp_or := Rect2(o["pos"] + Vector2(_stomp_od.body_offset_x, _stomp_od.body_offset_y),
-					Vector2(_stomp_od.body_w, _stomp_od.body_h))
+					p["pos"].x + _stomp_pd.body_offset_x * p_scaling_factor,
+					p["pos"].y + _stomp_pd.body_offset_y * p_scaling_factor + _stomp_pd.body_h * p_scaling_factor - 12.0 * p_scaling_factor,
+					_stomp_pd.body_w * p_scaling_factor, 15.0 * p_scaling_factor)
+				var o_scaling_factor: float = o.get("scaling_factor", 1.0)
+				var _stomp_or := Rect2(o["pos"] + Vector2(_stomp_od.body_offset_x * o_scaling_factor, _stomp_od.body_offset_y * o_scaling_factor),
+					Vector2(_stomp_od.body_w * o_scaling_factor, _stomp_od.body_h * o_scaling_factor))
 				if _stomp_foot.intersects(_stomp_or):
 					p["stomp_active"] = false
 					impacts.append({"pos": _stomp_foot.position + _stomp_foot.size * 0.5, "age": 0.0})
-					p["vel"].y = -420.0
+					p["vel"].y = -420.0 * p_scaling_factor
 					var _stomp_dir: float = 1.0 if p["right"] else -1.0
 					if o["lives"] > 1:
 						o["lives"] -= 1
@@ -777,7 +825,8 @@ func _apply_pull_effects(dt: float) -> void:
 				if pull < 0.0 and target_i == src_i:
 					continue
 				var tpd: CharacterDef = tp["def"]
-				var tp_center: Vector2 = tp["pos"] + Vector2(tpd.body_offset_x + tpd.body_w * 0.5, tpd.body_offset_y + tpd.body_h * 0.5)
+				var tp_scaling_factor: float = tp.get("scaling_factor", 1.0)
+				var tp_center: Vector2 = tp["pos"] + Vector2(tpd.body_offset_x * tp_scaling_factor + tpd.body_w * 0.5 * tp_scaling_factor, tpd.body_offset_y * tp_scaling_factor + tpd.body_h * 0.5 * tp_scaling_factor)
 				var diff: Vector2 = center - tp_center
 				var dist: float = diff.length()
 				if dist > 5.0:
@@ -815,14 +864,21 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 					target_o = pl[oi]
 		if target_o != null:
 			var o: Dictionary = target_o
+			var scaling_factor: float = p.get("scaling_factor", 1.0)
 			if p["pos"].x < o["pos"].x:
-				p["pos"].x = o["pos"].x + 80.0
+				p["pos"].x = o["pos"].x + 80.0 * scaling_factor
 				p["right"] = false
 			else:
-				p["pos"].x = o["pos"].x - 80.0
+				p["pos"].x = o["pos"].x - 80.0 * scaling_factor
 				p["right"] = true
-			p["pos"].y = o["pos"].y - 60.0
-			p["pos"].x = clamp(p["pos"].x, 0.0, W - SW)
+			p["pos"].y = o["pos"].y - 60.0 * scaling_factor
+			# Constrain to level bounds
+			var level_left_screen = (W - active_level.level_width * scaling_factor) / 2
+			var level_right_screen = level_left_screen + active_level.level_width * scaling_factor
+			var def: CharacterDef = p["def"]
+			var player_left_bound = level_left_screen - def.body_offset_x
+			var player_right_bound = level_right_screen - def.body_offset_x - def.body_w
+			p["pos"].x = clamp(p["pos"].x, player_left_bound, player_right_bound)
 		p["skill_cds"][skill_idx] = sk.cooldown
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
@@ -850,14 +906,15 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		return
 
 	var pos: Vector2 = p["pos"]
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
 	var hx: float
 	if p["right"]:
-		hx = pos.x + sk.effect_offset_x
+		hx = pos.x + sk.effect_offset_x * scaling_factor
 	else:
-		hx = pos.x + SW - sk.effect_offset_x - sk.effect_width
-	var hy: float = pos.y + sk.effect_offset_y
+		hx = pos.x + SW - sk.effect_offset_x * scaling_factor - sk.effect_width * scaling_factor
+	var hy: float = pos.y + sk.effect_offset_y * scaling_factor
 	var dir: float = 1.0 if p["right"] else -1.0
-	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir))
+	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir, scaling_factor))
 	if sk.spawn_behind_trap:
 		_spawn_lottery_trap(p, sk)
 	p["skill_cds"][skill_idx] = sk.cooldown
@@ -867,15 +924,15 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		for k in 3:
 			p["skill_cds"][k] = max(0.0, p["skill_cds"][k] * (1.0 - sk.self_cd_reduce_on_cast))
 	if sk.player_launch_x != 0.0:
-		p["vel"].x = dir * sk.player_launch_x
+		p["vel"].x = dir * sk.player_launch_x * p.get("scaling_factor", 1.0)
 		p["launch_t"] = sk.player_launch_duration
 	if sk.player_launch_y != 0.0:
-		p["vel"].y = sk.player_launch_y
+		p["vel"].y = sk.player_launch_y * p.get("scaling_factor", 1.0)
 		if sk.player_launch_y <= -750.0:
 			p["stomp_active"] = true
 
 
-func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictionary:
+func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float, scaling_factor: float = 1.0) -> Dictionary:
 	var ae_tex: Texture = null
 	if sk.effect_sprite_path != "":
 		ae_tex = load(sk.effect_sprite_path) as Texture
@@ -885,13 +942,13 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictiona
 	return {
 		"skill":             sk,
 		"t":                 0.0,
-		"rect":              Rect2(spawn_pos, Vector2(sk.effect_width, sk.effect_height)),
+		"rect":              Rect2(spawn_pos, Vector2(sk.effect_width * scaling_factor, sk.effect_height * scaling_factor)),
 		"hit":               false,
 		"hit_t":             0.0,
 		"tex":               ae_tex,
-		"dx":                sk.effect_dx * dir,
+		"dx":                sk.effect_dx * dir * scaling_factor,
 		"dy":                0.0,
-		"vy":                sk.effect_dy,
+		"vy":                sk.effect_dy * scaling_factor,
 		"rotation":          0.0,
 		"rotation_speed":    deg2rad(sk.effect_rotation_speed),
 		"facing":            dir,
@@ -899,18 +956,20 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float) -> Dictiona
 		"child_t":           0.0,
 		"child_spawn_count": 0,
 		"ground_hit":        false,
+		"scaling_factor":    scaling_factor,
 	}
 
 
 func _spawn_lottery_trap(p: Dictionary, sk: Resource) -> void:
-	var tw: float = sk.effect_width
-	var th: float = sk.effect_height
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	var tw: float = sk.effect_width * scaling_factor
+	var th: float = sk.effect_height * scaling_factor
 	var tx: float
 	if p["right"]:
-		tx = p["pos"].x - tw - 5.0
+		tx = p["pos"].x - tw - 5.0 * scaling_factor
 	else:
-		tx = p["pos"].x + SW + 5.0
-	var ty: float = p["pos"].y + 10.0
+		tx = p["pos"].x + SW + 5.0 * scaling_factor
+	var ty: float = p["pos"].y + 10.0 * scaling_factor
 	var ae_tex: Texture = null
 	if sk.effect_sprite_path != "":
 		ae_tex = load(sk.effect_sprite_path) as Texture
@@ -922,6 +981,7 @@ func _spawn_lottery_trap(p: Dictionary, sk: Resource) -> void:
 		"rotation": 0.0,
 		"rotation_speed": deg2rad(300.0),
 		"on_ground": false,
+		"scaling_factor": scaling_factor,
 	})
 
 
@@ -930,7 +990,8 @@ func _update_traps(dt: float) -> void:
 	var keep := []
 	for trap in trap_effects:
 		if not trap["on_ground"]:
-			trap["vy"] += TRAP_GRAV * dt
+			var trap_scaling_factor: float = trap.get("scaling_factor", 1.0)
+			trap["vy"] += TRAP_GRAV * trap_scaling_factor * dt
 			trap["rect"] = Rect2(trap["rect"].position + Vector2(0.0, trap["vy"] * dt), trap["rect"].size)
 			_collide_trap_plats(trap)
 		if trap["on_ground"]:
@@ -945,7 +1006,8 @@ func _update_traps(dt: float) -> void:
 			if tp.empty() or tp["dead"] or tp.get("invulnerable", false):
 				continue
 			var tpd: CharacterDef = tp["def"]
-			var tp_rect := Rect2(tp["pos"] + Vector2(tpd.body_offset_x, tpd.body_offset_y), Vector2(tpd.body_w, tpd.body_h))
+			var tp_scaling_factor: float = tp.get("scaling_factor", 1.0)
+			var tp_rect := Rect2(tp["pos"] + Vector2(tpd.body_offset_x * tp_scaling_factor, tpd.body_offset_y * tp_scaling_factor), Vector2(tpd.body_w * tp_scaling_factor, tpd.body_h * tp_scaling_factor))
 			if trap["rect"].intersects(tp_rect):
 				hit_this_frame = true
 				impacts.append({"pos": trap["rect"].position + trap["rect"].size * 0.5, "age": 0.0})
@@ -978,15 +1040,21 @@ func _collide_trap_plats(trap: Dictionary) -> void:
 	if trap["vy"] < 0.0:
 		return
 	var plats: Array = active_level._get_platforms()
+	var scaling_factor: float = trap.get("scaling_factor", 1.0)
+	
 	for plat in plats:
-		var px: float = plat[0]
-		var py: float = plat[1]
-		var pw: float = plat[2]
+		# Convert platform coordinates from level to screen space
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+		
+		var px: float = screen_pos.x
+		var py: float = screen_pos.y
+		var pw: float = screen_size.x
 		var bottom: float = rect.end.y
-		if rect.position.x < px + pw - 5.0 \
-				and rect.end.x > px + 5.0 \
+		if rect.position.x < px + pw - 5.0 * scaling_factor \
+				and rect.end.x > px + 5.0 * scaling_factor \
 				and bottom >= py \
-				and bottom <= py + 35.0:
+				and bottom <= py + 35.0 * scaling_factor:
 			trap["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
 			trap["vy"] = 0.0
 			trap["on_ground"] = true
@@ -996,39 +1064,66 @@ func _collide_trap_plats(trap: Dictionary) -> void:
 func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 	p["on_gnd"] = false
 	var plats: Array = active_level._get_platforms()
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	
 	for plat in plats:
-		var px: float = plat[0]
-		var py: float = plat[1]
-		var pw: float = plat[2]
+		# Convert platform coordinates from level to screen space
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+		
+		var px: float = screen_pos.x
+		var py: float = screen_pos.y
+		var pw: float = screen_size.x
 		var _pd: CharacterDef = p["def"]
-		var _bx: float = p["pos"].x + _pd.body_offset_x
-		var _by: float = p["pos"].y + _pd.body_offset_y
-		var bottom: float = _by + _pd.body_h
+		var _bx: float = p["pos"].x + _pd.body_offset_x * scaling_factor
+		var _by: float = p["pos"].y + _pd.body_offset_y * scaling_factor
+		var bottom: float = _by + _pd.body_h * scaling_factor
 		var prev_bottom: float = bottom - p["vel"].y * dt
+		
+		# Debug logging
+		var debug_collision = true
+		if debug_collision:
+			print("Platform: py=", py, " pw=", pw)
+			print("Character: pos.y=", p["pos"].y, " _by=", _by, " bottom=", bottom, " prev_bottom=", prev_bottom)
+			print("Body dims: h=", _pd.body_h, " offset_y=", _pd.body_offset_y, " scaled h=", _pd.body_h * scaling_factor)
+			print("Conditions: vel.y=", p["vel"].y, " left=", (_bx + _pd.body_w * scaling_factor > px + 10.0 * scaling_factor), 
+				" right=", (_bx < px + pw - 10.0 * scaling_factor), " bottom>=py=", (bottom >= py), 
+				" prev_bottom<=py+margin=", (prev_bottom <= py + 10.0 * scaling_factor))
+		
 		if p["vel"].y >= 0.0 \
-				and _bx + _pd.body_w > px + 5.0 \
-				and _bx < px + pw - 5.0 \
+				and _bx + _pd.body_w * scaling_factor > px + 10.0 * scaling_factor \
+				and _bx < px + pw - 10.0 * scaling_factor \
 				and bottom >= py \
-				and prev_bottom <= py + 5.0:
-			p["pos"].y = py - _pd.body_h - _pd.body_offset_y
+				and prev_bottom <= py + 10.0 * scaling_factor:
+			p["pos"].y = py - _pd.body_h * scaling_factor - _pd.body_offset_y * scaling_factor
 			p["vel"].y = 0.0
 			p["on_gnd"] = true
+			
+			if debug_collision:
+				print("COLLISION! New pos.y=", p["pos"].y)
 
 
 func _collide_effect_plats(ae: Dictionary) -> void:
 	var rect: Rect2 = ae["rect"]
 	var plats: Array = active_level._get_platforms()
+	# Get scaling factor from the effect (should be stored when effect was created)
+	var scaling_factor: float = ae.get("scaling_factor", 1.0)
+	
 	for plat in plats:
-		var px: float = plat[0]
-		var py: float = plat[1]
-		var pw: float = plat[2]
-		var ph: float = plat[3]
+		# Convert platform coordinates from level to screen space
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+		
+		var px: float = screen_pos.x
+		var py: float = screen_pos.y
+		var pw: float = screen_size.x
+		var ph: float = screen_size.y
 		var bottom: float = rect.end.y
 		var top: float = rect.position.y
-		if rect.position.x < px + pw - 5.0 \
-				and rect.end.x > px + 5.0 \
+		if rect.position.x < px + pw - 10.0 * scaling_factor \
+				and rect.end.x > px + 10.0 * scaling_factor \
 				and bottom >= py \
-				and bottom <= py + 35.0 \
+				and bottom <= py + 40.0 * scaling_factor \
 				and ae["vy"] >= 0.0:
 			ae["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
 			var bc: float = ae["skill"].bounce_coefficient
@@ -1040,10 +1135,10 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 				ae["ground_hit"] = true
 			return
 		elif ae["skill"].hit_walls_both_ways \
-				and rect.position.x < px + pw - 5.0 \
-				and rect.end.x > px + 5.0 \
+				and rect.position.x < px + pw - 10.0 * scaling_factor \
+				and rect.end.x > px + 10.0 * scaling_factor \
 				and top <= py + ph \
-				and top >= py + ph - 35.0 \
+				and top >= py + ph - 40.0 * scaling_factor \
 				and ae["vy"] < 0.0:
 			ae["rect"] = Rect2(rect.position.x, py + ph, rect.size.x, rect.size.y)
 			var bc: float = ae["skill"].bounce_coefficient
@@ -1133,9 +1228,12 @@ func _draw() -> void:
 	var lev: Resource = active_level
 	var bg_top: Color = lev.bg_top
 	var bg_bottom: Color = lev.bg_bottom
-	var split_y: float = H * lev.bg_split
+	
+	# Calculate scaling factor
+	var scaling_factor: float = lev.get_scaling_factor(W, H)
+	var split_y: float = H * lev.bg_split * scaling_factor
 
-	# Background
+	# Background - always fill the entire screen
 	draw_rect(Rect2(0, 0, W, split_y), bg_top)
 	draw_rect(Rect2(0, split_y, W, H - split_y), bg_bottom)
 
@@ -1147,7 +1245,9 @@ func _draw() -> void:
 		var sx := fmod(float(i * 137 + seedd), 780.0) + 10.0
 		var sy := fmod(float(i * 97 + seedd * 3), float(split_y - 20.0)) + 8.0
 		var sz := 2.0 if i % 3 == 0 else 1.0
-		draw_rect(Rect2(sx, sy, sz, sz), star_col)
+		# Scale star positions
+		var screen_pos = lev.level_to_screen(Vector2(sx, sy), scaling_factor)
+		draw_rect(Rect2(screen_pos.x, screen_pos.y, sz * scaling_factor, sz * scaling_factor), star_col)
 
 	# Platforms
 	var plats: Array = lev._get_platforms()
@@ -1160,11 +1260,21 @@ func _draw() -> void:
 		var py: float = plat[1]
 		var pw: float = plat[2]
 		var pheight: float = plat[3]
-		draw_rect(Rect2(px + 4, py + 4, pw, pheight), pd)
-		draw_rect(Rect2(px, py, pw, pheight), pf)
-		draw_rect(Rect2(px, py, pw, 5), ph)
-		draw_rect(Rect2(px, py, 3, pheight), ps)
-		draw_rect(Rect2(px + pw - 3, py, 3, pheight), ps)
+		
+		# Get screen position and size
+		var screen_pos = lev.level_to_screen(Vector2(px, py), scaling_factor)
+		var screen_size = lev.level_to_screen_size(Vector2(pw, pheight), scaling_factor)
+		var screen_px = screen_pos.x
+		var screen_py = screen_pos.y
+		var screen_pw = screen_size.x
+		var screen_pheight = screen_size.y
+		
+		# Draw platform with scaled dimensions
+		draw_rect(Rect2(screen_px + 4 * scaling_factor, screen_py + 4 * scaling_factor, screen_pw, screen_pheight), pd)
+		draw_rect(Rect2(screen_px, screen_py, screen_pw, screen_pheight), pf)
+		draw_rect(Rect2(screen_px, screen_py, screen_pw, 5 * scaling_factor), ph)
+		draw_rect(Rect2(screen_px, screen_py, 3 * scaling_factor, screen_pheight), ps)
+		draw_rect(Rect2(screen_px + screen_pw - 3 * scaling_factor, screen_py, 3 * scaling_factor, screen_pheight), ps)
 
 	# Active skill effect hitboxes
 	for i in range(4):
