@@ -7,8 +7,11 @@ const H := 450.0
 const LevelDef = preload("res://scripts/LevelDef.gd")
 
 # Editor modes
-enum EditorMode { PLATFORM, PLAYER_P1, PLAYER_P2, PLAYER_P3, PLAYER_P4, DELETE_PLATFORM }
+enum EditorMode { PLATFORM, PLAYER_SELECTION, DELETE_PLATFORM }
 var current_mode: int = EditorMode.PLATFORM
+
+# Player selection sub-mode (1-4)
+var selected_player: int = 1  # 1, 2, 3, or 4
 
 # Editor state
 var platforms: Array = []  # Each platform: [x, y, width, height]
@@ -171,23 +174,34 @@ func _input(event: InputEvent) -> void:
 							print("DEBUG: property_value_str after init: '", property_value_str, "'")
 							update()  # Force immediate redraw to show yellow editing state
 				KEY_1:
-					current_mode = EditorMode.PLATFORM
-					update()
+					if current_mode == EditorMode.PLAYER_SELECTION:
+						selected_player = 1
+						current_mode = EditorMode.PLATFORM  # Return to main menu
+						update()
+					else:
+						current_mode = EditorMode.PLATFORM
+						update()
 				KEY_2:
-					current_mode = EditorMode.PLAYER_P1
-					update()
+					if current_mode == EditorMode.PLAYER_SELECTION:
+						selected_player = 2
+						current_mode = EditorMode.PLATFORM  # Return to main menu
+						update()
+					else:
+						current_mode = EditorMode.PLAYER_SELECTION
+						update()
 				KEY_3:
-					current_mode = EditorMode.PLAYER_P2
-					update()
+					if current_mode == EditorMode.PLAYER_SELECTION:
+						selected_player = 3
+						current_mode = EditorMode.PLATFORM  # Return to main menu
+						update()
+					else:
+						current_mode = EditorMode.DELETE_PLATFORM
+						update()
 				KEY_4:
-					current_mode = EditorMode.PLAYER_P3
-					update()
-				KEY_5:
-					current_mode = EditorMode.PLAYER_P4
-					update()
-				KEY_6:
-					current_mode = EditorMode.DELETE_PLATFORM
-					update()
+					if current_mode == EditorMode.PLAYER_SELECTION:
+						selected_player = 4
+						current_mode = EditorMode.PLATFORM  # Return to main menu
+						update()
 	
 	if event is InputEventMouseButton:
 		if event.button_index == BUTTON_LEFT:
@@ -202,6 +216,8 @@ func _input(event: InputEvent) -> void:
 					var panel_y = 30
 					var panel_width = 150
 					var panel_height = 180
+					if current_mode == EditorMode.PLAYER_SELECTION:
+						panel_height = 320  # Extra space for player sub-modes
 					
 					if mouse_pos.x >= panel_x and mouse_pos.x <= panel_x + panel_width and \
 					   mouse_pos.y >= panel_y and mouse_pos.y <= panel_y + panel_height:
@@ -209,17 +225,33 @@ func _input(event: InputEvent) -> void:
 						var mode_y_start = panel_y + 40
 						var line_height = 25
 						
-						for i in range(6):  # 6 modes
+						for i in range(3):  # 3 main modes
 							var mode_y = mode_y_start + i * line_height
 							var mode_y_end = mode_y + 20  # Approximate height of mode item
 							
 							if mouse_pos.y >= mode_y - 15 and mouse_pos.y <= mode_y_end:
 								# Clicked on this mode
 								current_mode = i
-								var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4", "Delete Platform"]
+								var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform"]
 								print("Mode switched to: " + mode_names[i] + " (mouse click)")
 								update()
 								break
+						
+						# Check if clicking on player sub-modes when in PLAYER_SELECTION mode
+						if current_mode == EditorMode.PLAYER_SELECTION:
+							var sub_start_y = mode_y_start + 3 * line_height + 10
+							for i in range(4):  # 4 player sub-modes
+								var sub_y = sub_start_y + i * line_height
+								var sub_y_end = sub_y + 20
+								
+								if mouse_pos.y >= sub_y - 15 and mouse_pos.y <= sub_y_end:
+									# Clicked on player sub-mode
+									selected_player = i + 1
+									current_mode = EditorMode.PLATFORM  # Return to main menu
+									print("Player selected: P" + str(selected_player) + " (mouse click)")
+									update()
+									break
+						
 						return  # Don't process other clicks if we clicked on mode selector
 				
 				# Check if clicking on spawn positions to move them
@@ -240,21 +272,18 @@ func _input(event: InputEvent) -> void:
 					current_platform_start = mouse_pos
 					current_platform_end = mouse_pos
 					drawing_platform = true
-				elif current_mode == EditorMode.PLAYER_P1:
-					# Place P1 spawn
-					start_p1 = mouse_pos
-					update()
-				elif current_mode == EditorMode.PLAYER_P2:
-					# Place P2 spawn
-					start_p2 = mouse_pos
-					update()
-				elif current_mode == EditorMode.PLAYER_P3:
-					# Place P3 spawn
-					start_p3 = mouse_pos
-					update()
-				elif current_mode == EditorMode.PLAYER_P4:
-					# Place P4 spawn
-					start_p4 = mouse_pos
+				elif current_mode == EditorMode.PLAYER_SELECTION:
+					# Place selected player spawn
+					match selected_player:
+						1:
+							start_p1 = mouse_pos
+						2:
+							start_p2 = mouse_pos
+						3:
+							start_p3 = mouse_pos
+						4:
+							start_p4 = mouse_pos
+					current_mode = EditorMode.PLATFORM  # Return to main menu after placing player
 					update()
 				elif current_mode == EditorMode.DELETE_PLATFORM:
 					# Delete platform if clicked on one
@@ -333,28 +362,40 @@ func _handle_property_input(event: InputEvent) -> void:
 				update()
 				return
 			KEY_1:
-				current_mode = EditorMode.PLATFORM
-				update()
+				if current_mode == EditorMode.PLAYER_SELECTION:
+					selected_player = 1
+					current_mode = EditorMode.PLATFORM  # Return to main menu
+					update()
+				else:
+					current_mode = EditorMode.PLATFORM
+					update()
 				return
 			KEY_2:
-				current_mode = EditorMode.PLAYER_P1
-				update()
+				if current_mode == EditorMode.PLAYER_SELECTION:
+					selected_player = 2
+					current_mode = EditorMode.PLATFORM  # Return to main menu
+					update()
+				else:
+					current_mode = EditorMode.PLAYER_SELECTION
+					update()
 				return
 			KEY_3:
-				current_mode = EditorMode.PLAYER_P2
-				update()
+				if current_mode == EditorMode.PLAYER_SELECTION:
+					selected_player = 3
+					current_mode = EditorMode.PLATFORM  # Return to main menu
+					update()
+				else:
+					current_mode = EditorMode.DELETE_PLATFORM
+					update()
 				return
 			KEY_4:
-				current_mode = EditorMode.PLAYER_P3
-				update()
-				return
-			KEY_5:
-				current_mode = EditorMode.PLAYER_P4
-				update()
-				return
-			KEY_6:
-				current_mode = EditorMode.DELETE_PLATFORM
-				update()
+				if current_mode == EditorMode.PLAYER_SELECTION:
+					selected_player = 4
+					current_mode = EditorMode.PLATFORM  # Return to main menu
+					update()
+				else:
+					# This could be used for additional modes in the future
+					update()
 				return
 		
 		# Handle property editing keys
@@ -506,9 +547,12 @@ func _draw_ui() -> void:
 	draw_string(font, Vector2(W - 200, 18), "ESC: Exit  SPACE: Properties  G: Grid(" + ("ON" if snap_to_grid else "OFF") + ")", Color(0.8, 0.8, 0.8))
 	
 	# Draw current mode
-	var mode_names = ["Platform Drawing", "Placing P1", "Placing P2", "Placing P3", "Placing P4", "Delete Platform"]
-	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(0.8, 0.2, 0.2), Color(0.2, 0.2, 0.8), Color(0.8, 0.8, 0.2), Color(1.0, 0.5, 0.2)]
-	draw_string(font, Vector2(250, 18), "Mode: " + mode_names[current_mode], mode_colors[current_mode])
+	var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform"]
+	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(1.0, 0.5, 0.2)]
+	var mode_display_text = mode_names[current_mode]
+	if current_mode == EditorMode.PLAYER_SELECTION:
+		mode_display_text += " (P" + str(selected_player) + ")"
+	draw_string(font, Vector2(250, 18), "Mode: " + mode_display_text, mode_colors[current_mode])
 	
 	# Draw platform count
 	draw_string(font, Vector2(W - 400, 18), "Platforms: " + str(platforms.size()), Color(0.8, 0.8, 0.8))
@@ -597,6 +641,8 @@ func _draw_mode_selector() -> void:
 	# Draw mode selector panel on left side
 	var panel_width = 150
 	var panel_height = 200
+	if current_mode == EditorMode.PLAYER_SELECTION:
+		panel_height = 320  # Extra space for player sub-modes
 	var panel_x = 10
 	var panel_y = 30
 	
@@ -610,11 +656,8 @@ func _draw_mode_selector() -> void:
 	# Mode options
 	var modes = [
 		"1. Platform Drawing",
-		"2. Place P1 (Green)",
-		"3. Place P2 (Red)",
-		"4. Place P3 (Blue)",
-		"5. Place P4 (Yellow)",
-		"6. Delete Platform"
+		"2. Place Players",
+		"3. Delete Platform"
 	]
 	
 	var start_y = panel_y + 40
@@ -630,8 +673,25 @@ func _draw_mode_selector() -> void:
 		
 		draw_string(font, Vector2(panel_x + 10, y), modes[i], color)
 	
+	# Show player selection sub-options when in PLAYER_SELECTION mode
+	if current_mode == EditorMode.PLAYER_SELECTION:
+		var sub_start_y = start_y + modes.size() * line_height + 10
+		var sub_modes = [
+			"  1. Place P1 (Green)",
+			"  2. Place P2 (Red)",
+			"  3. Place P3 (Blue)",
+			"  4. Place P4 (Yellow)"
+		]
+		
+		for i in range(sub_modes.size()):
+			var sub_y = sub_start_y + i * line_height
+			var sub_color = Color(0.9, 0.9, 0.3) if (i + 1) == selected_player else Color(0.7, 0.7, 0.7)
+			draw_string(font, Vector2(panel_x + 20, sub_y), sub_modes[i], sub_color)
+	
 	# Instructions
-	draw_string(font, Vector2(panel_x + 10, panel_y + panel_height - 25), "Press 1-6 to switch", Color(0.7, 0.7, 0.7))
+	draw_string(font, Vector2(panel_x + 10, panel_y + panel_height - 25), "Press 1-3 to switch modes", Color(0.7, 0.7, 0.7))
+	if current_mode == EditorMode.PLAYER_SELECTION:
+		draw_string(font, Vector2(panel_x + 10, panel_y + panel_height - 5), "Press 1-4 to select player", Color(0.7, 0.7, 0.7))
 
 func _draw_properties_panel() -> void:
 	var panel_width = 300
