@@ -181,6 +181,17 @@ var game_over := false
 var restart_t: float = 0.0
 const RESTART_DELAY := 1.0
 
+# Round tracking and scoring
+var current_round: int = 1
+const TOTAL_ROUNDS: int = 9
+var show_highscore_screen: bool = false
+var player_scores: Array = [0, 0, 0, 0]
+var player_kills: Array = [0, 0, 0, 0]
+var death_order: Array = []
+var round_winner: int = -1
+
+var font: Font
+
 var _lbl_p: Array = [null, null, null, null]
 var _lbl_winner: Label
 var _lbl_restart: Label
@@ -284,7 +295,7 @@ func _ready() -> void:
 	_lbl_winner.align = Label.ALIGN_CENTER
 	_lbl_winner.visible = false
 
-	_lbl_restart = _make_lbl("Restarting in 3...", Vector2(0, 248), Color(0.6, 0.6, 0.85))
+	_lbl_restart = _make_lbl("", Vector2(0, 248), Color(0.6, 0.6, 0.85))
 	_lbl_restart.rect_size = Vector2(W / 1.4, 30)
 	_lbl_restart.rect_scale = Vector2(1.4, 1.4)
 	_lbl_restart.align = Label.ALIGN_CENTER
@@ -301,7 +312,21 @@ func _ready() -> void:
 	for pi in range(4):
 		if p_active[pi]:
 			_init_player(pi, p_defs[pi] if p_defs[pi] != null else ASEN_DEF)
-
+	
+	# Initialize tournament state
+	current_round = 1
+	show_highscore_screen = false
+	for i in range(4):
+		player_scores[i] = 0
+		player_kills[i] = 0
+	death_order.clear()
+	round_winner = -1
+	
+	# Get font for drawing
+	var tmp := Label.new()
+	add_child(tmp)
+	font = tmp.get_font("font")
+	tmp.queue_free()
 
 
 func _make_lbl(txt: String, pos: Vector2, col: Color) -> Label:
@@ -391,10 +416,23 @@ func _process(delta: float) -> void:
 		_level_flash_t = max(0.0, _level_flash_t - dt)
 
 	if game_over:
-		restart_t += dt
-		_lbl_restart.text = "Restarting in %d..." % int(ceil(RESTART_DELAY - restart_t))
-		if restart_t >= RESTART_DELAY:
-			_restart_round()
+		if show_highscore_screen:
+			# Highscore screen is shown, wait for input to continue
+			restart_t += dt
+			# Check for Enter press to go to next round
+			if Input.is_action_just_pressed("start"):
+				_go_to_next_round()
+		else:
+			# Check if we're in final results screen
+			if current_round >= TOTAL_ROUNDS:
+				# Final results screen, check for R to restart tournament
+				if Input.is_action_just_pressed("restart"):
+					_reset_tournament()
+			else:
+				# Old behavior for compatibility
+				restart_t += dt
+				if restart_t >= RESTART_DELAY:
+					_restart_round()
 		update()
 		return
 
@@ -417,14 +455,11 @@ func _process(delta: float) -> void:
 				alive_count += 1
 				last_alive_name = pl[i]["def"].display_name
 		if alive_count <= 1:
-			var active_total = 0
-			for i in range(4):
-				if p_active[i]: active_total += 1
-			if active_total > 1:
-				if alive_count == 1:
-					_end_game(last_alive_name + " WINS!")
-				else:
-					_end_game("DRAW!")
+			if alive_count == 1:
+				_end_game(last_alive_name + " WINS!")
+			else:
+				# Everyone is dead
+				_end_game("DRAW!")
 
 	for i in range(4):
 		if not p_active[i]: continue
@@ -536,6 +571,9 @@ func _update_player(i: int, dt: float) -> void:
 			p["death_t"] = 0.0
 			p["anim_frame"] = 0
 			p["anim_t"] = 0.0
+			# Track death order
+			if not i in death_order:
+				death_order.append(i)
 		return
 
 	if p["getting_up"]:
@@ -561,6 +599,9 @@ func _update_player(i: int, dt: float) -> void:
 			p["death_t"] = 0.0
 			p["anim_frame"] = 0
 			p["anim_t"] = 0.0
+			# Track death order
+			if not i in death_order:
+				death_order.append(i)
 		return
 
 	# Tick skill cooldowns — drain faster while walking if def says so
@@ -633,6 +674,11 @@ func _update_player(i: int, dt: float) -> void:
 								o["anim_frame"] = 0
 								o["anim_t"] = 0.0
 								o["vel"] = Vector2(dir * 380.0, -440.0)
+								# Track kill
+								player_kills[i] += 1
+								# Track death order
+								if not oi in death_order:
+									death_order.append(oi)
 							if ae["skill"].hit_self_invisible:
 								p["invisible"] = true
 								p["invisible_t"] = 4.0
@@ -673,6 +719,9 @@ func _update_player(i: int, dt: float) -> void:
 			p["death_t"] = 0.0
 			p["anim_frame"] = 0
 			p["anim_t"] = 0.0
+			# Track death order (self-kill)
+			if not i in death_order:
+				death_order.append(i)
 			p["vel"] = Vector2(0.0, -200.0)
 	p["active_effects"] = live_effects + new_effects
 
@@ -791,6 +840,11 @@ func _update_player(i: int, dt: float) -> void:
 						o["anim_frame"] = 0
 						o["anim_t"] = 0.0
 						o["vel"] = Vector2(_stomp_dir * 80.0, -200.0)
+						# Track stomp kill
+						player_kills[i] += 1
+						# Track death order
+						if not oi in death_order:
+							death_order.append(oi)
 					break
 
 	_collide_plats(p, dt)
@@ -915,7 +969,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	var dir: float = 1.0 if p["right"] else -1.0
 	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir, scaling_factor))
 	if sk.spawn_behind_trap:
-		_spawn_lottery_trap(p, sk)
+		_spawn_lottery_trap(p, sk, i)
 	p["skill_cds"][skill_idx] = sk.cooldown
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
@@ -959,7 +1013,7 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float, scaling_fac
 	}
 
 
-func _spawn_lottery_trap(p: Dictionary, sk: Resource) -> void:
+func _spawn_lottery_trap(p: Dictionary, sk: Resource, killer_index: int = -1) -> void:
 	var scaling_factor: float = p.get("scaling_factor", 1.0)
 	var tw: float = sk.effect_width * scaling_factor
 	var th: float = sk.effect_height * scaling_factor
@@ -981,6 +1035,7 @@ func _spawn_lottery_trap(p: Dictionary, sk: Resource) -> void:
 		"rotation_speed": deg2rad(300.0),
 		"on_ground": false,
 		"scaling_factor": scaling_factor,
+		"killer": killer_index,  # Track who spawned the trap
 	})
 
 
@@ -1028,6 +1083,13 @@ func _update_traps(dt: float) -> void:
 						tp["anim_frame"] = 0
 						tp["anim_t"] = 0.0
 						tp["vel"] = Vector2(0.0, -200.0)
+						# Track trap kill with killer
+						var killer_index: int = trap.get("killer", -1)
+						if killer_index >= 0 and killer_index < 4:
+							player_kills[killer_index] += 1
+						# Track death order
+						if not pi in death_order:
+							death_order.append(pi)
 				break
 		if not hit_this_frame:
 			keep.append(trap)
@@ -1217,9 +1279,123 @@ func _end_game(text: String) -> void:
 	game_over = true
 	restart_t = 0.0
 	MenuManager.locked = true
+	
+	# Determine round winner and track death order
+	_track_round_results()
+	
+	# Calculate scores for this round
+	_calculate_round_scores()
+	
+	# Show highscore screen instead of immediate restart
+	show_highscore_screen = true
 	_lbl_winner.text = text
-	_lbl_winner.visible = true
 	_lbl_restart.visible = true
+
+
+func _track_round_results() -> void:
+	# death_order is already populated as players died during the round
+	round_winner = -1
+	
+	# Find alive players
+	var alive_players = []
+	for i in range(4):
+		if p_active[i] and not pl[i]["dead"]:
+			alive_players.append(i)
+	
+	# If there's exactly one alive player, they're the winner
+	if alive_players.size() == 1:
+		round_winner = alive_players[0]
+	
+	# Note: death_order contains players in order they died (first to die is first in array)
+
+
+func _calculate_round_scores() -> void:
+	# Calculate scores based on the rules:
+	# 1 point for each kill
+	# 3 points for being the last survivor (round winner)
+	# 2 points for dying just before the last survivor (second-to-last)
+	# 1 point for not being the first dead
+	
+	# Add kill points (tracked separately)
+	for i in range(4):
+		if p_active[i]:
+			player_scores[i] += player_kills[i]
+	
+	# Add survival points
+	if round_winner != -1:
+		# 3 points for last survivor
+		player_scores[round_winner] += 3
+		
+		# 2 points for second-to-last (if there is one)
+		if death_order.size() >= 1:
+			var second_last = death_order[death_order.size() - 1]
+			player_scores[second_last] += 2
+	
+	# 1 point for not being first dead
+	if death_order.size() >= 1:
+		var first_dead = death_order[0]
+		for i in range(4):
+			if p_active[i] and i != first_dead:
+				player_scores[i] += 1
+
+
+func _go_to_next_round() -> void:
+	# Check if we've completed all rounds
+	if current_round >= TOTAL_ROUNDS:
+		# Game over, show final results
+		_show_final_results()
+	else:
+		# Reset for next round
+		current_round += 1
+		show_highscore_screen = false
+		# Reset kill counts for this round (keep total scores)
+		for i in range(4):
+			player_kills[i] = 0
+		death_order.clear()
+		round_winner = -1
+		_restart_round()
+
+
+func _show_final_results() -> void:
+	# Determine overall winner
+	var max_score = -1
+	var winners = []
+	for i in range(4):
+		if p_active[i]:
+			if player_scores[i] > max_score:
+				max_score = player_scores[i]
+				winners = [i]
+			elif player_scores[i] == max_score:
+				winners.append(i)
+	
+	var winner_text = ""
+	if winners.size() == 1:
+		winner_text = pl[winners[0]]["def"].display_name + " WINS THE TOURNAMENT!"
+	else:
+		winner_text = "DRAW! Multiple winners."
+	
+	# Show final results screen
+	_lbl_winner.text = winner_text + "\n\nFinal Scores:\n"
+	for i in range(4):
+		if p_active[i]:
+			_lbl_winner.text += pl[i]["def"].display_name + ": " + str(player_scores[i]) + " points\n"
+	
+	_lbl_restart.text = "Press R to restart tournament"
+	show_highscore_screen = false
+
+
+func _reset_tournament() -> void:
+	# Reset all tournament state
+	current_round = 1
+	show_highscore_screen = false
+	for i in range(4):
+		player_scores[i] = 0
+		player_kills[i] = 0
+	death_order.clear()
+	round_winner = -1
+	game_over = false
+	restart_t = 0.0
+	_restart_round()
 
 
 func _restart_round() -> void:
@@ -1255,7 +1431,75 @@ func _restart_round() -> void:
 	_lbl_controls.text = "Esc menu  Arrow keys + Enter navigate menu"
 
 
+func _draw_highscore_screen() -> void:
+	# Draw semi-transparent background
+	draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.7))
+	
+	# Draw highscore box
+	var box_w: float = 500.0
+	var box_h: float = 350.0
+	var box_x: float = (W - box_w) / 2.0
+	var box_y: float = (H - box_h) / 2.0
+	
+	draw_rect(Rect2(box_x, box_y, box_w, box_h), Color(0.08, 0.08, 0.14))
+	draw_rect(Rect2(box_x, box_y, box_w, box_h), Color(0.45, 0.4, 0.65), false, 2.0)
+	
+	# Draw title
+	var title = "ROUND " + str(current_round) + " RESULTS"
+	draw_string(font, Vector2(box_x + box_w * 0.5 - 60.0, box_y + 30.0), title, Color.white)
+	
+	# Draw round scores on the left side
+	var left_start_y = box_y + 70.0
+	draw_string(font, Vector2(box_x + 30.0, left_start_y), "ROUND SCORES:", Color(1.0, 0.8, 0.5))
+	left_start_y += 30.0
+	
+	for i in range(4):
+		if p_active[i]:
+			var player_name = pl[i]["def"].display_name
+			var kills = player_kills[i]
+			var round_score = 0
+			
+			# Calculate round score based on rules
+			if i == round_winner:
+				round_score += 3
+			if death_order.size() >= 1 and i == death_order[death_order.size() - 1]:
+				round_score += 2
+			if death_order.size() >= 1 and i != death_order[0]:
+				round_score += 1
+			round_score += kills  # 1 point per kill
+			
+			var score_text = player_name + ": " + str(round_score) + " points"
+			if kills > 0:
+				score_text += " (" + str(kills) + " kills)"
+			
+			draw_string(font, Vector2(box_x + 30.0, left_start_y), score_text, Color(0.9, 0.9, 1.0))
+			left_start_y += 30.0
+	
+	# Draw total scores on the right side
+	var right_start_y = box_y + 70.0
+	draw_string(font, Vector2(box_x + box_w - 180.0, right_start_y), "TOTAL SCORES:", Color(1.0, 0.8, 0.5))
+	right_start_y += 30.0
+	
+	for i in range(4):
+		if p_active[i]:
+			var player_name = pl[i]["def"].display_name
+			var total_score = player_scores[i]
+			var score_text = player_name + ": " + str(total_score) + " points"
+			draw_string(font, Vector2(box_x + box_w - 180.0, right_start_y), score_text, Color(0.8, 1.0, 0.8))
+			right_start_y += 25.0
+	
+	# Draw round progress
+	left_start_y += 20.0
+	var progress_text = "Round " + str(current_round) + " of " + str(TOTAL_ROUNDS)
+	draw_string(font, Vector2(box_x + box_w * 0.5 - 40.0, left_start_y), progress_text, Color(0.7, 0.7, 1.0))
+
+
 func _draw() -> void:
+	# Draw highscore screen if active
+	if show_highscore_screen:
+		_draw_highscore_screen()
+		return
+	
 	var lev: Resource = active_level
 	var bg_top: Color = lev.bg_top
 	var bg_bottom: Color = lev.bg_bottom
