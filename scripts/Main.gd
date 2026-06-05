@@ -177,6 +177,7 @@ var rand_defs: Array = []
 var pl := [{}, {}, {}, {}]
 var impacts := []
 var trap_effects := []
+var coins := []  # Active coins in the level: each coin is [x, y, collected]
 var game_over := false
 var restart_t: float = 0.0
 const RESTART_DELAY := 1.0
@@ -187,6 +188,7 @@ const TOTAL_ROUNDS: int = 9
 var show_highscore_screen: bool = false
 var player_scores: Array = [0, 0, 0, 0]
 var player_kills: Array = [0, 0, 0, 0]
+var player_coins: Array = [0, 0, 0, 0]  # Coins collected by each player
 var death_order: Array = []
 var round_winner: int = -1
 
@@ -197,6 +199,42 @@ var _lbl_winner: Label
 var _lbl_restart: Label
 var _lbl_controls: Label
 var _lbl_level: Label
+
+# Helper function to safely convert any value to float
+func _safe_float(value) -> float:
+	# Try to convert to float, return 0.0 if conversion fails
+	var result = 0.0
+	if value is float or value is int:
+		result = float(value)
+	else:
+		# Try string conversion
+		var str_value = str(value)
+		# Simple check for numeric string (digits, decimal point, optional sign)
+		var is_numeric = false
+		if str_value.length() > 0:
+			var has_decimal = false
+			var has_digit = false
+			is_numeric = true
+			for i in range(str_value.length()):
+				var ch = str_value[i]
+				if ch == '-' or ch == '+':
+					if i != 0:
+						is_numeric = false
+						break
+				elif ch == '.':
+					if has_decimal:
+						is_numeric = false
+						break
+					has_decimal = true
+				elif ord(ch) >= ord('0') and ord(ch) <= ord('9'):
+					has_digit = true
+				else:
+					is_numeric = false
+					break
+			# A valid numeric string must have at least one digit
+			if is_numeric and has_digit:
+				result = float(str_value)
+	return result
 
 
 func _pick_level() -> void:
@@ -446,6 +484,8 @@ func _process(delta: float) -> void:
 	for i in range(4):
 		if p_active[i]:
 			_update_player(i, dt)
+			# Check for coin collection
+			_check_coin_collection(i)
 
 	if not game_over:
 		var alive_count = 0
@@ -530,6 +570,78 @@ func _process(delta: float) -> void:
 
 	update()
 
+
+func _check_coin_collection(player_index: int) -> void:
+	# Safety check: ensure player_index is valid
+	if player_index < 0 or player_index >= 4:
+		return
+	if not p_active[player_index]:
+		return
+	
+	var p: Dictionary = pl[player_index]
+	if p.empty():
+		return
+	
+	# Check if player is dead
+	if p.get("dead", false):
+		return
+	
+	var def: CharacterDef = p["def"]
+	if def == null:
+		return
+	
+	# Calculate player collision rectangle
+	var scaling_factor: float = p.get("scaling_factor", 1.0)
+	var player_rect = Rect2(
+		p["pos"] + Vector2(def.body_offset_x * scaling_factor, def.body_offset_y * scaling_factor),
+		Vector2(def.body_w * scaling_factor, def.body_h * scaling_factor)
+	)
+	
+	# Check each coin
+	for coin_index in range(coins.size()):
+		# Safety check: ensure coin_index is valid
+		if coin_index < 0 or coin_index >= coins.size():
+			continue
+		
+		var coin = coins[coin_index]
+		# Safety check: ensure coin is a valid array
+		if not (coin is Array):
+			continue
+		
+		# Safety check: ensure coin has at least 3 elements
+		if coin.size() < 3:
+			continue
+		
+		# Safety check: ensure coin[2] exists before accessing it
+		if coin[2]:  # Already collected
+			continue
+		
+		# Safety check: ensure coin[0] and coin[1] are valid numbers
+		var coin_x = 0.0
+		var coin_y = 0.0
+		if coin.size() >= 2:
+			# Try to convert to float, use 0.0 if conversion fails
+			coin_x = _safe_float(coin[0])
+			coin_y = _safe_float(coin[1])
+		
+		var coin_pos = Vector2(coin_x, coin_y)
+		var coin_radius = 8.0 * scaling_factor
+		var coin_rect = Rect2(coin_pos - Vector2(coin_radius, coin_radius), Vector2(coin_radius * 2, coin_radius * 2))
+		
+		if player_rect.intersects(coin_rect):
+			# Collect coin - additional safety check
+			if coin_index >= 0 and coin_index < coins.size():
+				var target_coin = coins[coin_index]
+				if target_coin is Array and target_coin.size() >= 3:
+					coins[coin_index][2] = true
+			
+			# Safety check: ensure player_index is within bounds
+			if player_index >= 0 and player_index < player_coins.size():
+				player_coins[player_index] += 1
+			
+			# Add visual effect (could be improved)
+			impacts.append({"pos": coin_pos, "age": 0.0})
+			print("Player ", player_index, " collected a coin! Total: ", player_coins[player_index])
 
 func _update_player(i: int, dt: float) -> void:
 	var p: Dictionary = pl[i]
@@ -1312,6 +1424,7 @@ func _track_round_results() -> void:
 func _calculate_round_scores() -> void:
 	# Calculate scores based on the rules:
 	# 1 point for each kill
+	# 1 point for each coin collected
 	# 3 points for being the last survivor (round winner)
 	# 2 points for dying just before the last survivor (second-to-last)
 	# 1 point for not being the first dead
@@ -1320,6 +1433,11 @@ func _calculate_round_scores() -> void:
 	for i in range(4):
 		if p_active[i]:
 			player_scores[i] += player_kills[i]
+	
+	# Add coin points
+	for i in range(4):
+		if p_active[i] and i < player_coins.size():
+			player_scores[i] += player_coins[i]
 	
 	# Add survival points
 	if round_winner != -1:
@@ -1400,6 +1518,11 @@ func _reset_tournament() -> void:
 
 func _restart_round() -> void:
 	_pick_level()
+	# Safety check: ensure active_level is not null
+	if active_level == null:
+		print("ERROR: active_level is null in _restart_round()")
+		return
+	
 	# Remove old sprites
 	for i in range(4):
 		if not p_active[i]: continue
@@ -1412,6 +1535,20 @@ func _restart_round() -> void:
 	restart_t = 0.0
 	impacts = []
 	trap_effects = []
+	coins = []  # Reset coins
+	# Load coins from level
+	var coin_array = active_level._get_coins()
+	var scaling_factor: float = active_level.get_scaling_factor(W, H)
+	for coin in coin_array:
+		# Safety check: ensure coin has at least 2 elements (x, y)
+		if coin.size() < 2:
+			continue
+		# Convert from level to screen coordinates
+		var coin_x = _safe_float(coin[0])
+		var coin_y = _safe_float(coin[1])
+		var screen_pos = active_level.level_to_screen(Vector2(coin_x, coin_y), scaling_factor)
+		coins.append([screen_pos.x, screen_pos.y, false])  # [x, y, collected]
+	
 	MenuManager.locked = false
 	_lbl_winner.visible = false
 	_lbl_restart.visible = false
@@ -1428,7 +1565,7 @@ func _restart_round() -> void:
 			_lbl_p[i].text = original_def.display_name
 			_lbl_p[i].add_color_override("font_color", original_def.label_color)
 
-	_lbl_controls.text = "Esc menu  Arrow keys + Enter navigate menu"
+	_lbl_controls.text = "Esc menu  Arrow key + Enter navigate menu"
 
 
 func _draw_highscore_screen() -> void:
@@ -1550,6 +1687,33 @@ func _draw() -> void:
 		draw_rect(Rect2(screen_px, screen_py, screen_pw, 5 * scaling_factor), ph)
 		draw_rect(Rect2(screen_px, screen_py, 3 * scaling_factor, screen_pheight), ps)
 		draw_rect(Rect2(screen_px + screen_pw - 3 * scaling_factor, screen_py, 3 * scaling_factor, screen_pheight), ps)
+
+	# Coins
+	for coin in coins:
+		# Safety check: ensure coin is a valid array
+		if not (coin is Array):
+			continue
+		
+		# Safety check: ensure coin has at least 3 elements
+		if coin.size() < 3:
+			continue
+		
+		# Safety check: ensure coin[2] exists before accessing it
+		if not coin[2]:  # Only draw uncollected coins
+			# Safety check: ensure coin[0] and coin[1] are valid numbers
+			var coin_x = 0.0
+			var coin_y = 0.0
+			if coin.size() >= 2:
+				# Try to convert to float, use 0.0 if conversion fails
+				coin_x = _safe_float(coin[0])
+				coin_y = _safe_float(coin[1])
+			
+			var coin_pos = Vector2(coin_x, coin_y)
+			var coin_radius = 8.0 * scaling_factor
+			# Draw coin with yellow gradient effect
+			draw_circle(coin_pos, coin_radius, Color(1.0, 0.8, 0.0))
+			draw_circle(coin_pos, coin_radius * 0.75, Color(1.0, 1.0, 0.0))
+			draw_arc(coin_pos, coin_radius, 0, 2 * PI, 16, Color(0.8, 0.6, 0.0), 2.0)
 
 	# Active skill effect hitboxes
 	for i in range(4):

@@ -7,7 +7,7 @@ const H := 450.0
 const LevelDef = preload("res://scripts/LevelDef.gd")
 
 # Editor modes
-enum EditorMode { PLATFORM, PLAYER_SELECTION, DELETE_PLATFORM }
+enum EditorMode { PLATFORM, PLAYER_SELECTION, DELETE_PLATFORM, COIN_PLACEMENT }
 var current_mode: int = EditorMode.PLATFORM
 
 # Player selection sub-mode (1-4)
@@ -15,6 +15,7 @@ var selected_player: int = 1  # 1, 2, 3, or 4
 
 # Editor state
 var platforms: Array = []  # Each platform: [x, y, width, height]
+var coins: Array = []  # Each coin: [x, y]
 var drawing_platform: bool = false
 var dragging_p1: bool = false
 var dragging_p2: bool = false
@@ -136,10 +137,10 @@ func _input(event: InputEvent) -> void:
 				KEY_ENTER, KEY_KP_ENTER:
 					if show_properties:
 						print("DEBUG: ENTER pressed, show_properties=true, selected_property=", selected_property)
-						if selected_property == 12:  # Save map
+						if selected_property == 13:  # Save map
 							print("DEBUG: Calling _save_level()")
 							_save_level()
-						elif selected_property == 11:  # Load level
+						elif selected_property == 12:  # Load level
 							print("DEBUG: Loading level")
 							_load_level_dialog()
 						else:
@@ -202,6 +203,9 @@ func _input(event: InputEvent) -> void:
 						selected_player = 4
 						current_mode = EditorMode.PLATFORM  # Return to main menu
 						update()
+					else:
+						current_mode = EditorMode.COIN_PLACEMENT
+						update()
 	
 	if event is InputEventMouseButton:
 		if event.button_index == BUTTON_LEFT:
@@ -225,14 +229,14 @@ func _input(event: InputEvent) -> void:
 						var mode_y_start = panel_y + 40
 						var line_height = 25
 						
-						for i in range(3):  # 3 main modes
+						for i in range(4):  # 4 main modes
 							var mode_y = mode_y_start + i * line_height
 							var mode_y_end = mode_y + 20  # Approximate height of mode item
 							
 							if mouse_pos.y >= mode_y - 15 and mouse_pos.y <= mode_y_end:
 								# Clicked on this mode
 								current_mode = i
-								var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform"]
+								var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform", "Coin Placement"]
 								print("Mode switched to: " + mode_names[i] + " (mouse click)")
 								update()
 								break
@@ -287,11 +291,26 @@ func _input(event: InputEvent) -> void:
 					update()
 				elif current_mode == EditorMode.DELETE_PLATFORM:
 					# Delete platform if clicked on one
+					var deleted_something = false
 					for i in range(platforms.size() - 1, -1, -1):
 						if _point_in_platform(mouse_pos, platforms[i]):
 							platforms.remove(i)
-							update()
+							deleted_something = true
 							break
+					# Also delete coins if clicked on one
+					if not deleted_something:
+						for i in range(coins.size() - 1, -1, -1):
+							var coin_pos = Vector2(coins[i][0], coins[i][1])
+							if (mouse_pos - coin_pos).length() < 10:
+								coins.remove(i)
+								deleted_something = true
+								break
+					if deleted_something:
+						update()
+				elif current_mode == EditorMode.COIN_PLACEMENT:
+					# Place a coin
+					coins.append([mouse_pos.x, mouse_pos.y])
+					update()
 			else:
 				# Finish drawing platform or dragging
 				if drawing_platform:
@@ -394,7 +413,7 @@ func _handle_property_input(event: InputEvent) -> void:
 					current_mode = EditorMode.PLATFORM  # Return to main menu
 					update()
 				else:
-					# This could be used for additional modes in the future
+					current_mode = EditorMode.COIN_PLACEMENT
 					update()
 				return
 		
@@ -481,7 +500,7 @@ func _apply_property_value() -> void:
 			if parts.size() == 2:
 				start_p4 = Vector2(float(parts[0]), float(parts[1]))
 				update()
-		11: # Save map
+		13: # Save map
 			_save_level()
 
 func _draw() -> void:
@@ -505,6 +524,16 @@ func _draw() -> void:
 		draw_rect(Rect2(px, py, pw, 5), plat_highlight)
 		draw_rect(Rect2(px, py, 3, pheight), plat_shadow)
 		draw_rect(Rect2(px + pw - 3, py, 3, pheight), plat_shadow)
+	
+	# Draw coins
+	for coin in coins:
+		var cx: float = coin[0]
+		var cy: float = coin[1]
+		# Draw coin as a yellow circle
+		draw_circle(Vector2(cx, cy), 8, Color(1.0, 0.8, 0.0))
+		draw_circle(Vector2(cx, cy), 6, Color(1.0, 1.0, 0.0))
+		# Draw coin outline
+		draw_arc(Vector2(cx, cy), 8, 0, 2 * PI, 16, Color(0.8, 0.6, 0.0), 2.0)
 	
 	# Draw platform being drawn
 	if drawing_platform:
@@ -547,8 +576,8 @@ func _draw_ui() -> void:
 	draw_string(font, Vector2(W - 200, 18), "ESC: Exit  SPACE: Properties  G: Grid(" + ("ON" if snap_to_grid else "OFF") + ")", Color(0.8, 0.8, 0.8))
 	
 	# Draw current mode
-	var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform"]
-	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(1.0, 0.5, 0.2)]
+	var mode_names = ["Platform Drawing", "Player Selection", "Delete Platform", "Coin Placement"]
+	var mode_colors = [Color(0.8, 0.8, 0.8), Color(0.2, 0.8, 0.2), Color(1.0, 0.5, 0.2), Color(1.0, 0.8, 0.0)]
 	var mode_display_text = mode_names[current_mode]
 	if current_mode == EditorMode.PLAYER_SELECTION:
 		mode_display_text += " (P" + str(selected_player) + ")"
@@ -657,7 +686,8 @@ func _draw_mode_selector() -> void:
 	var modes = [
 		"1. Platform Drawing",
 		"2. Place Players",
-		"3. Delete Platform"
+		"3. Delete Platform",
+		"4. Coin Placement"
 	]
 	
 	var start_y = panel_y + 40
@@ -719,6 +749,7 @@ func _draw_properties_panel() -> void:
 		"Start P2: " + str(int(start_p2.x)) + "," + str(int(start_p2.y)),
 		"Start P3: " + str(int(start_p3.x)) + "," + str(int(start_p3.y)),
 		"Start P4: " + str(int(start_p4.x)) + "," + str(int(start_p4.y)),
+		"Coins: " + str(coins.size()),
 		"Load level",
 		"Save map"
 	]
@@ -772,6 +803,15 @@ func _save_level() -> void:
 	
 	var platforms_str = "|".join(platform_strings)
 	
+	# Create coins string - convert from screen to level coordinates
+	var coin_strings = []
+	for coin in coins:
+		# Convert from screen to level coordinates
+		var level_pos = _screen_to_level(Vector2(coin[0], coin[1]))
+		coin_strings.append(str(int(level_pos.x)) + "," + str(int(level_pos.y)))
+	
+	var coins_str = "|".join(coin_strings)
+	
 	# Create a new LevelDef resource
 	var level_def = LevelDef.new()
 	level_def.level_name = level_name
@@ -796,6 +836,7 @@ func _save_level() -> void:
 	level_def.start_p4 = _screen_to_level(start_p4)
 	
 	level_def.platforms_str = platforms_str
+	level_def.coins_str = coins_str
 	
 	# Generate filename from level name
 	var filename = level_name.to_lower().replace(" ", "_") + ".tres"
@@ -922,6 +963,15 @@ func load_level(level_def: Resource) -> void:
 		var screen_w = plat[2] * scaling_factor
 		var screen_h = plat[3] * scaling_factor
 		platforms.append([screen_x, screen_y, screen_w, screen_h])
+	
+	# Parse coins and convert from level to screen coordinates
+	coins = []
+	var coin_array = level_def._get_coins()
+	for coin in coin_array:
+		# Convert from level to screen coordinates
+		var screen_x = (coin[0] * scaling_factor) + _get_level_offset_x(scaling_factor)
+		var screen_y = (coin[1] * scaling_factor) + _get_level_offset_y(scaling_factor)
+		coins.append([screen_x, screen_y])
 	
 	update()
 

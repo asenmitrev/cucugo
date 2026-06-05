@@ -33,6 +33,9 @@ export var start_p4: Vector2 = Vector2(600, 200)
 # Platforms: "x,y,w,h|x,y,w,h|..."
 export var platforms_str: String = ""
 
+# Coins: "x,y|x,y|..."
+export var coins_str: String = ""
+
 func _get_platforms() -> Array:
 	var out: Array = []
 	if platforms_str == "":
@@ -42,6 +45,24 @@ func _get_platforms() -> Array:
 		var parts: Array = entry.split(",")
 		if parts.size() == 4:
 			out.append([float(parts[0]), float(parts[1]), float(parts[2]), float(parts[3])])
+	return out
+
+func _get_coins() -> Array:
+	var out: Array = []
+	if coins_str == "":
+		return out
+	var entries: Array = coins_str.split("|")
+	for entry in entries:
+		var parts: Array = entry.split(",")
+		if parts.size() >= 2:
+			# Try to convert to float, use 0.0 if conversion fails
+			var x = 0.0
+			var y = 0.0
+			if parts[0] is String or parts[0] is int or parts[0] is float:
+				x = float(parts[0])
+			if parts[1] is String or parts[1] is int or parts[1] is float:
+				y = float(parts[1])
+			out.append([x, y])
 	return out
 
 # Calculate scaling factor to fit level on screen
