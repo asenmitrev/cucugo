@@ -128,11 +128,11 @@ func _input(event: InputEvent) -> void:
 						_save_level()
 				KEY_UP:
 					if show_properties:
-						selected_property = wrapi(selected_property - 1, 0, 13)
+						selected_property = wrapi(selected_property - 1, 0, 14)
 						update()
 				KEY_DOWN:
 					if show_properties:
-						selected_property = wrapi(selected_property + 1, 0, 13)
+						selected_property = wrapi(selected_property + 1, 0, 14)
 						update()
 				KEY_ENTER, KEY_KP_ENTER:
 					if show_properties:

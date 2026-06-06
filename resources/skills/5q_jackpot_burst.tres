@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Jackpot Burst"
 cast_time = 0.35
-cooldown = 30.0
+cooldown = 45.0
 anim_cast = 0.12
 cast_anim = "punch"
 effect_width = 50.0
@@ -16,7 +16,7 @@ effect_offset_y = 10.0
 effect_duration = 30.0
 effect_color = Color( 1, 0.85, 0.4, 1 )
 effect_sprite_path = "res://assets/5q/pako.png"
-effect_dx = 60.0
+effect_dx = 90.0
 effect_dy = 80.0
 effect_rotation_speed = 0.0
 effect_gravity = 250.0

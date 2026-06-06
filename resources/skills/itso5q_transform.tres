@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Transform"
 cast_time = 0.3
-cooldown = 4.0
+cooldown = 45.0
 anim_cast = 0.12
 cast_anim = "jump"
 effect_width = 1.0
