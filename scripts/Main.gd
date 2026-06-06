@@ -740,13 +740,20 @@ func _update_player(i: int, dt: float) -> void:
 	for ae in p["active_effects"]:
 		ae["t"] += dt
 		ae["vy"] += ae["skill"].effect_gravity * dt
+		var old_pos = ae["rect"].position
 		ae["rect"] = Rect2(ae["rect"].position + Vector2(ae["dx"], ae["dy"] + ae["vy"]) * dt, ae["rect"].size)
+		if ae["skill"].effect_turnaround:
+			var move_x = ae["dx"] * dt
+			var skill_name = ae["skill"].display_name
+			if skill_name.find("Chicken") != -1 or skill_name.find("Baby") != -1 or skill_name.find("Vasilev") != -1:
+				var scaling_factor = ae.get("scaling_factor", 1.0)
+				print("DEBUG: ", skill_name, " pos update: old=(", old_pos.x, ",", old_pos.y, "), new=(", ae["rect"].position.x, ",", ae["rect"].position.y, "), dx=", ae["dx"], ", dt=", dt, ", move_x=", move_x, ", vy=", ae["vy"], ", scaling_factor=", scaling_factor)
 		if ae["skill"].effect_gravity > 0.0 or ae["skill"].hit_walls_both_ways:
 			if ae["vy"] >= 0.0 or ae["skill"].hit_walls_both_ways:
 				_collide_effect_plats(ae)
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
-			_maybe_turnaround_effect(ae)
+			_maybe_turnaround_effect(ae, dt)
 		if ae["hit"] and ae["skill"].hit_interval > 0.0:
 			ae["hit_t"] = max(0.0, ae["hit_t"] - dt)
 			if ae["hit_t"] <= 0.0:
@@ -1122,6 +1129,7 @@ func _make_effect_dict(sk: Resource, spawn_pos: Vector2, dir: float, scaling_fac
 		"child_spawn_count": 0,
 		"ground_hit":        false,
 		"scaling_factor":    scaling_factor,
+		"turn_cooldown":     0.1,  # Initial cooldown to prevent immediate turnaround
 	}
 
 
@@ -1356,33 +1364,64 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 			return
 
 
-func _maybe_turnaround_effect(ae: Dictionary) -> void:
+func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
 	var rect: Rect2 = ae["rect"]
 	var dx: float = ae["dx"]
 	if dx == 0.0:
 		return
+	
+	# Prevent rapid flipping - add a small cooldown after turnaround
+	var turn_cooldown = ae.get("turn_cooldown", 0.0)
+	if turn_cooldown > 0.0:
+		ae["turn_cooldown"] = max(0.0, turn_cooldown - dt)
+		return
+	
 	# Screen edge reversal
 	if (dx < 0.0 and rect.position.x <= 0.0) or (dx > 0.0 and rect.end.x >= W):
 		ae["dx"] = -dx
 		ae["facing"] = -ae["facing"]
+		ae["turn_cooldown"] = 0.1  # 0.1 second cooldown after turnaround
+		print("DEBUG: Screen edge turnaround, new dx=", ae["dx"])
 		return
+	
 	# Platform edge reversal — only when effect just landed (vy reset to 0 this frame)
-	if ae["vy"] > 5.0:
+	# Only check for platform edges when vertical velocity is very small (close to landing)
+	if abs(ae["vy"]) > 0.1:
 		return
+	
 	var plats: Array = active_level._get_platforms()
 	var bottom_y: float = rect.end.y
 	var lead_x: float = rect.end.x if dx > 0.0 else rect.position.x
 	var supported: bool = false
+	# Get scaling factor from the effect (should be stored when effect was created)
+	var scaling_factor: float = ae.get("scaling_factor", 1.0)
 	for plat in plats:
-		var px: float = plat[0]
-		var py: float = plat[1]
-		var pw: float = plat[2]
-		if lead_x > px and lead_x < px + pw and abs(bottom_y - py) < 15.0:
+		# Convert platform coordinates from level to screen space
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+		var px: float = screen_pos.x
+		var py: float = screen_pos.y
+		var pw: float = screen_size.x
+		# Add small tolerance for edge cases
+		if lead_x >= px - 1.0 and lead_x <= px + pw + 1.0 and abs(bottom_y - py) < 15.0:
 			supported = true
 			break
+	
+	# Debug logging for turnaround decisions
+	var skill_name = ae["skill"].display_name
+	if skill_name.find("Chicken") != -1 or skill_name.find("Jackpot") != -1 or skill_name.find("Baby") != -1 or skill_name.find("Vasilev") != -1:
+		print("DEBUG: Turnaround check for ", skill_name, ": lead_x=", lead_x, ", bottom_y=", bottom_y, ", vy=", ae["vy"], ", scaling_factor=", scaling_factor, ", supported=", supported)
+		# Also log platform positions for debugging
+		for plat in plats:
+			var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+			var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+			print("  Platform: px=", screen_pos.x, ", py=", screen_pos.y, ", pw=", screen_size.x)
+	
 	if not supported:
 		ae["dx"] = -ae["dx"]
 		ae["facing"] = -ae["facing"]
+		ae["turn_cooldown"] = 0.1  # 0.1 second cooldown after turnaround
+		print("DEBUG: Platform edge turnaround, pos=(", rect.position.x, ",", rect.position.y, "), lead_x=", lead_x, ", vy=", ae["vy"], ", new dx=", ae["dx"])
 
 
 func _end_game(text: String) -> void:
