@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Stumble Charge"
 cast_time = 0.28
-cooldown = 0.8
+cooldown = 0.3
 anim_cast = 0.09
 cast_anim = "punch"
 effect_width = 50.0

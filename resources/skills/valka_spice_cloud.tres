@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Spice Cloud"
 cast_time = 0.35
-cooldown = 1.5
+cooldown = 0.25
 anim_cast = 0.1
 cast_anim = "kick"
 effect_width = 30.0

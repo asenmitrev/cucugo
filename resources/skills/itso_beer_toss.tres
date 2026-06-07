@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Beer Toss"
 cast_time = 0.2
-cooldown = 1.5
+cooldown = 1.0
 anim_cast = 0.1
 cast_anim = "kick"
 effect_width = 60.0
