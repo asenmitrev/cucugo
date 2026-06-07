@@ -1370,6 +1370,11 @@ func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
 	if dx == 0.0:
 		return
 	
+	var px: float = 0.0
+	var py: float = 0.0
+	var pw: float = 0.0
+	var ph: float = 0.0
+	
 	# Prevent rapid flipping - add a small cooldown after turnaround
 	var turn_cooldown = ae.get("turn_cooldown", 0.0)
 	if turn_cooldown > 0.0:
@@ -1380,9 +1385,88 @@ func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
 	if (dx < 0.0 and rect.position.x <= 0.0) or (dx > 0.0 and rect.end.x >= W):
 		ae["dx"] = -dx
 		ae["facing"] = -ae["facing"]
-		ae["turn_cooldown"] = 0.1  # 0.1 second cooldown after turnaround
+		ae["turn_cooldown"] = 0.3  # 0.3 second cooldown after turnaround
 		print("DEBUG: Screen edge turnaround, new dx=", ae["dx"])
 		return
+	
+	# Wall/platform collision reversal when respect_walls is enabled
+	if ae["skill"].respect_walls:
+		var plats: Array = active_level._get_platforms()
+		var scaling_factor: float = ae.get("scaling_factor", 1.0)
+		var left_x: float = rect.position.x
+		var right_x: float = rect.end.x
+		
+		# Debug logging for wall collision checks
+		var skill_name = ae["skill"].display_name
+		if skill_name.find("Chicken") != -1 or skill_name.find("Baby") != -1 or skill_name.find("Jackpot") != -1 or skill_name.find("Vasilev") != -1:
+			print("DEBUG WALL CHECK: ", skill_name, " dx=", dx, " left_x=", left_x, " right_x=", right_x, " vy=", ae["vy"])
+		
+		for plat in plats:
+			# Convert platform coordinates from level to screen space
+			var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+			var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+			
+			px = screen_pos.x
+			py = screen_pos.y
+			pw = screen_size.x
+			ph = screen_size.y
+			
+			# Check if projectile is currently on this platform
+			# If it is, we should ignore wall collisions with this platform
+			# to avoid constant turnaround when near edges
+			var is_on_this_platform: bool = false
+			# Check if projectile's bottom is on or very close to the platform top
+			# and if it's horizontally within the platform bounds
+			if rect.end.y >= py - 2.0 * scaling_factor and rect.end.y <= py + 10.0 * scaling_factor \
+					and rect.position.x < px + pw - 2.0 * scaling_factor \
+					and rect.end.x > px + 2.0 * scaling_factor:
+				is_on_this_platform = true
+				
+				# Debug logging
+				if skill_name.find("Chicken") != -1 or skill_name.find("Baby") != -1 or skill_name.find("Jackpot") != -1 or skill_name.find("Vasilev") != -1:
+					print("DEBUG: Projectile is on platform px=", px, " py=", py, " pw=", pw, " ph=", ph, " projectile_bottom=", rect.end.y)
+			
+			# Skip wall collision check if projectile is on this platform
+			if is_on_this_platform:
+				continue
+			
+			# Check for left wall collision (moving left and hitting right side of platform)
+			# Only trigger if the wall is directly front and would block movement
+			# Check if projectile's next position would be inside the platform
+			if dx < 0.0:
+				var next_left_x = left_x + dx * dt * 60.0  # Estimate next frame position
+				# Only turnaround if we're moving toward the wall (dx < 0) and would penetrate it
+				# Also check that we're not already mostly past the wall
+				if next_left_x <= px + pw and left_x > px + pw - 15.0 * scaling_factor \
+						and rect.position.y < py + ph - 5.0 * scaling_factor \
+						and rect.end.y > py + 10.0 * scaling_factor:
+					ae["dx"] = -dx
+					ae["facing"] = -ae["facing"]
+					ae["turn_cooldown"] = 0.3
+					# Push the projectile slightly away from the wall to prevent getting stuck
+					ae["rect"] = Rect2(px + pw + 2.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					print("DEBUG: Left wall collision turnaround, new dx=", ae["dx"], " next_left_x=", next_left_x, " platform_right=", px + pw, " current_left=", left_x)
+					return
+			
+			# Check for right wall collision (moving right and hitting left side of platform)
+			# Only trigger if the wall is directly front and would block movement
+			# Check if projectile's next position would be inside the platform
+			if dx > 0.0:
+				var next_right_x = right_x + dx * dt * 60.0  # Estimate next frame position
+				# Only turnaround if we're moving toward the wall (dx > 0) and would penetrate it
+				# Also check that we're not already mostly past the wall
+				if next_right_x >= px and right_x < px + 15.0 * scaling_factor \
+						and rect.position.y < py + ph - 5.0 * scaling_factor \
+						and rect.end.y > py + 10.0 * scaling_factor:
+					ae["dx"] = -dx
+					ae["facing"] = -ae["facing"]
+					ae["turn_cooldown"] = 0.3
+					# Push the projectile slightly away from the wall to prevent getting stuck
+					ae["rect"] = Rect2(px - rect.size.x - 2.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					print("DEBUG: Right wall collision turnaround, new dx=", ae["dx"], " next_right_x=", next_right_x, " platform_left=", px, " current_right=", right_x)
+					return
+	
+	# End of platform loop for wall collision detection
 	
 	# Platform edge reversal — only when effect just landed (vy reset to 0 this frame)
 	# Only check for platform edges when vertical velocity is very small (close to landing)
@@ -1399,9 +1483,9 @@ func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
 		# Convert platform coordinates from level to screen space
 		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
 		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
-		var px: float = screen_pos.x
-		var py: float = screen_pos.y
-		var pw: float = screen_size.x
+		px = screen_pos.x
+		py = screen_pos.y
+		pw = screen_size.x
 		# Add small tolerance for edge cases
 		if lead_x >= px - 1.0 and lead_x <= px + pw + 1.0 and abs(bottom_y - py) < 15.0:
 			supported = true
@@ -1420,7 +1504,7 @@ func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
 	if not supported:
 		ae["dx"] = -ae["dx"]
 		ae["facing"] = -ae["facing"]
-		ae["turn_cooldown"] = 0.1  # 0.1 second cooldown after turnaround
+		ae["turn_cooldown"] = 0.3  # 0.3 second cooldown after turnaround
 		print("DEBUG: Platform edge turnaround, pos=(", rect.position.x, ",", rect.position.y, "), lead_x=", lead_x, ", vy=", ae["vy"], ", new dx=", ae["dx"])
 
 

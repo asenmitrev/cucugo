@@ -23,6 +23,7 @@ effect_gravity = 700.0
 bounce_coefficient = 1.1
 hit_walls_both_ways = true
 effect_turnaround = false
+respect_walls = false
 hit_kills = true
 hit_trigger_cooldowns = false
 child_skill_path = ""
