@@ -23,6 +23,7 @@ export var bounce_coefficient: float = 0.0
 export var hit_walls_both_ways: bool = false
 export var effect_turnaround: bool = false
 export var respect_walls: bool = false
+export var pass_through_platforms: bool = false
 
 export var hit_kills: bool = true
 export var hit_trigger_cooldowns: bool = false

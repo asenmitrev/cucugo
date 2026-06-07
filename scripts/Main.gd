@@ -760,6 +760,10 @@ func _update_player(i: int, dt: float) -> void:
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae, dt)
+			
+		if not ae["skill"].pass_through_platforms:
+			_collide_effect_walls(ae, dt)
+			
 		if ae["hit"] and ae["skill"].hit_interval > 0.0:
 			ae["hit_t"] = max(0.0, ae["hit_t"] - dt)
 			if ae["hit_t"] <= 0.0:
@@ -1379,6 +1383,77 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 			if ae["skill"].spawn_on_impact:
 				ae["ground_hit"] = true
 			return
+
+
+func _collide_effect_walls(ae: Dictionary, dt: float) -> void:
+	var rect: Rect2 = ae["rect"]
+	var dx: float = ae["dx"]
+	if dx == 0.0:
+		return
+		
+	# If the projectile handles its own wall bouncing, let it do so
+	if ae["skill"].respect_walls:
+		return
+		
+	var plats: Array = active_level._get_platforms()
+	var scaling_factor: float = ae.get("scaling_factor", 1.0)
+	var left_x: float = rect.position.x
+	var right_x: float = rect.end.x
+	
+	for plat in plats:
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
+		
+		var px: float = screen_pos.x
+		var py: float = screen_pos.y
+		var pw: float = screen_size.x
+		var ph: float = screen_size.y
+		
+		# Check if projectile is currently on this platform (ignore wall collision with floor)
+		if rect.end.y >= py - 2.0 * scaling_factor and rect.end.y <= py + 10.0 * scaling_factor \
+				and rect.position.x < px + pw - 2.0 * scaling_factor \
+				and rect.end.x > px + 2.0 * scaling_factor:
+			continue
+			
+		if dx < 0.0:
+			var next_left_x = left_x + dx * dt * 60.0
+			if next_left_x <= px + pw and left_x > px + pw - 15.0 * scaling_factor \
+					and rect.position.y < py + ph - 5.0 * scaling_factor \
+					and rect.end.y > py + 10.0 * scaling_factor:
+				# Hit left wall
+				var bc: float = ae["skill"].bounce_coefficient
+				if bc > 0.0:
+					ae["dx"] = abs(ae["dx"]) * bc
+					ae["rect"] = Rect2(px + pw + 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					ae["facing"] = -ae["facing"]
+				else:
+					ae["dx"] = 0.0
+					ae["rect"] = Rect2(px + pw + 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					if ae["skill"].spawn_on_impact:
+						ae["ground_hit"] = true
+					else:
+						ae["t"] = ae["skill"].effect_duration
+				return
+				
+		if dx > 0.0:
+			var next_right_x = right_x + dx * dt * 60.0
+			if next_right_x >= px and right_x < px + 15.0 * scaling_factor \
+					and rect.position.y < py + ph - 5.0 * scaling_factor \
+					and rect.end.y > py + 10.0 * scaling_factor:
+				# Hit right wall
+				var bc: float = ae["skill"].bounce_coefficient
+				if bc > 0.0:
+					ae["dx"] = -abs(ae["dx"]) * bc
+					ae["rect"] = Rect2(px - rect.size.x - 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					ae["facing"] = -ae["facing"]
+				else:
+					ae["dx"] = 0.0
+					ae["rect"] = Rect2(px - rect.size.x - 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
+					if ae["skill"].spawn_on_impact:
+						ae["ground_hit"] = true
+					else:
+						ae["t"] = ae["skill"].effect_duration
+				return
 
 
 func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:

@@ -24,6 +24,7 @@ bounce_coefficient = 1.1
 hit_walls_both_ways = true
 effect_turnaround = false
 respect_walls = false
+pass_through_platforms = false
 hit_kills = true
 hit_trigger_cooldowns = false
 child_skill_path = ""
