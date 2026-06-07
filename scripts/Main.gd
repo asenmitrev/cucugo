@@ -391,9 +391,15 @@ func _init_player(i: int, def: CharacterDef) -> void:
 	var tex: Dictionary = _load_tex(def.char_name)
 
 	var slot: String = "p" + str(i + 1)
-	var start_pos: Vector2 = active_level.start_p1 if i == 0 else active_level.start_p2
-	if i == 2: start_pos = active_level.start_p1 + Vector2(40, -40)
-	if i == 3: start_pos = active_level.start_p2 + Vector2(-40, -40)
+	var start_pos: Vector2
+	if i == 0:
+		start_pos = active_level.start_p1
+	elif i == 1:
+		start_pos = active_level.start_p2
+	elif i == 2:
+		start_pos = active_level.start_p3
+	else:
+		start_pos = active_level.start_p4
 	
 	# Convert start position from level to screen coordinates
 	var screen_start_pos = active_level.level_to_screen(start_pos, scaling_factor)
