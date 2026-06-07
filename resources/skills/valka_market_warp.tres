@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Market Warp"
 cast_time = 0.35
-cooldown = 2.0
+cooldown = 1.0
 anim_cast = 0.1
 cast_anim = "jump"
 effect_width = 1.0

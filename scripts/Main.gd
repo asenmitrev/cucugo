@@ -1048,8 +1048,8 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 			var level_left_screen = (W - active_level.level_width * scaling_factor) / 2
 			var level_right_screen = level_left_screen + active_level.level_width * scaling_factor
 			var def: CharacterDef = p["def"]
-			var player_left_bound = level_left_screen - def.body_offset_x
-			var player_right_bound = level_right_screen - def.body_offset_x - def.body_w
+			var player_left_bound = level_left_screen - def.body_offset_x * scaling_factor
+			var player_right_bound = level_right_screen - def.body_offset_x * scaling_factor - def.body_w * scaling_factor
 			p["pos"].x = clamp(p["pos"].x, player_left_bound, player_right_bound)
 		p["skill_cds"][skill_idx] = sk.cooldown
 		p["casting_skill"] = -1
@@ -1060,8 +1060,19 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		var plats: Array = active_level._get_platforms()
 		var plat: Array = plats[randi() % plats.size()]
 		var def: CharacterDef = p["def"]
-		p["pos"].x = clamp(plat[0] + randf() * max(0.0, plat[2] - SW), 0.0, W - SW)
-		p["pos"].y = plat[1] - def.body_h - def.body_offset_y
+		var scaling_factor: float = p.get("scaling_factor", 1.0)
+		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
+		var plat_w_screen = active_level.level_to_screen_size(Vector2(plat[2], 0), scaling_factor).x
+		
+		var level_left_screen = (W - active_level.level_width * scaling_factor) / 2
+		var level_right_screen = level_left_screen + active_level.level_width * scaling_factor
+		var player_left_bound = level_left_screen - def.body_offset_x * scaling_factor
+		var player_right_bound = level_right_screen - def.body_offset_x * scaling_factor - def.body_w * scaling_factor
+		
+		var random_x = screen_pos.x + randf() * max(0.0, plat_w_screen - SW * scaling_factor)
+		
+		p["pos"].x = clamp(random_x, player_left_bound, player_right_bound)
+		p["pos"].y = screen_pos.y - def.body_h * scaling_factor - def.body_offset_y * scaling_factor
 		p["vel"] = Vector2.ZERO
 		p["right"] = randf() > 0.5
 		p["skill_cds"][skill_idx] = sk.cooldown
