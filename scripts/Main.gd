@@ -761,8 +761,7 @@ func _update_player(i: int, dt: float) -> void:
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae, dt)
 			
-		if not ae["skill"].pass_through_platforms:
-			_collide_effect_walls(ae, dt)
+
 			
 		if ae["hit"] and ae["skill"].hit_interval > 0.0:
 			ae["hit_t"] = max(0.0, ae["hit_t"] - dt)
@@ -872,7 +871,7 @@ func _update_player(i: int, dt: float) -> void:
 			if p["right"]:
 				_phx = p["pos"].x + _psk.effect_offset_x * scaling_factor
 			else:
-				_phx = p["pos"].x + SW - _psk.effect_offset_x * scaling_factor - _psk.effect_width * scaling_factor
+				_phx = p["pos"].x + (SW * scaling_factor) - _psk.effect_offset_x * scaling_factor - _psk.effect_width * scaling_factor
 			p["active_effects"].append(_make_effect_dict(_psk, Vector2(_phx, p["pos"].y + _psk.effect_offset_y * scaling_factor), 1.0 if p["right"] else -1.0, scaling_factor))
 			p["skill_cds"][k] = _psk.cooldown
 
@@ -978,7 +977,7 @@ func _update_player(i: int, dt: float) -> void:
 
 	_collide_plats(p, dt)
 	var _bdef: CharacterDef = p["def"]
-	p["pos"].x = clamp(p["pos"].x, -_bdef.body_offset_x, W - _bdef.body_offset_x - _bdef.body_w)
+	p["pos"].x = clamp(p["pos"].x, -_bdef.body_offset_x * scaling_factor, W - _bdef.body_offset_x * scaling_factor - _bdef.body_w * scaling_factor)
 
 	if p.get("stomp_active", false) and p["on_gnd"]:
 		p["stomp_active"] = false
@@ -1104,7 +1103,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	if p["right"]:
 		hx = pos.x + sk.effect_offset_x * scaling_factor
 	else:
-		hx = pos.x + SW - sk.effect_offset_x * scaling_factor - sk.effect_width * scaling_factor
+		hx = pos.x + (SW * scaling_factor) - sk.effect_offset_x * scaling_factor - sk.effect_width * scaling_factor
 	var hy: float = pos.y + sk.effect_offset_y * scaling_factor
 	var dir: float = 1.0 if p["right"] else -1.0
 	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir, scaling_factor))
@@ -1162,7 +1161,7 @@ func _spawn_lottery_trap(p: Dictionary, sk: Resource, killer_index: int = -1) ->
 	if p["right"]:
 		tx = p["pos"].x - tw - 5.0 * scaling_factor
 	else:
-		tx = p["pos"].x + SW + 5.0 * scaling_factor
+		tx = p["pos"].x + (SW * scaling_factor) + 5.0 * scaling_factor
 	var ty: float = p["pos"].y + 10.0 * scaling_factor
 	var ae_tex: Texture = null
 	if sk.effect_sprite_path != "":
@@ -1383,77 +1382,6 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 			if ae["skill"].spawn_on_impact:
 				ae["ground_hit"] = true
 			return
-
-
-func _collide_effect_walls(ae: Dictionary, dt: float) -> void:
-	var rect: Rect2 = ae["rect"]
-	var dx: float = ae["dx"]
-	if dx == 0.0:
-		return
-		
-	# If the projectile handles its own wall bouncing, let it do so
-	if ae["skill"].respect_walls:
-		return
-		
-	var plats: Array = active_level._get_platforms()
-	var scaling_factor: float = ae.get("scaling_factor", 1.0)
-	var left_x: float = rect.position.x
-	var right_x: float = rect.end.x
-	
-	for plat in plats:
-		var screen_pos = active_level.level_to_screen(Vector2(plat[0], plat[1]), scaling_factor)
-		var screen_size = active_level.level_to_screen_size(Vector2(plat[2], plat[3]), scaling_factor)
-		
-		var px: float = screen_pos.x
-		var py: float = screen_pos.y
-		var pw: float = screen_size.x
-		var ph: float = screen_size.y
-		
-		# Check if projectile is currently on this platform (ignore wall collision with floor)
-		if rect.end.y >= py - 2.0 * scaling_factor and rect.end.y <= py + 10.0 * scaling_factor \
-				and rect.position.x < px + pw - 2.0 * scaling_factor \
-				and rect.end.x > px + 2.0 * scaling_factor:
-			continue
-			
-		if dx < 0.0:
-			var next_left_x = left_x + dx * dt * 60.0
-			if next_left_x <= px + pw and left_x > px + pw - 15.0 * scaling_factor \
-					and rect.position.y < py + ph - 5.0 * scaling_factor \
-					and rect.end.y > py + 10.0 * scaling_factor:
-				# Hit left wall
-				var bc: float = ae["skill"].bounce_coefficient
-				if bc > 0.0:
-					ae["dx"] = abs(ae["dx"]) * bc
-					ae["rect"] = Rect2(px + pw + 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
-					ae["facing"] = -ae["facing"]
-				else:
-					ae["dx"] = 0.0
-					ae["rect"] = Rect2(px + pw + 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
-					if ae["skill"].spawn_on_impact:
-						ae["ground_hit"] = true
-					else:
-						ae["t"] = ae["skill"].effect_duration
-				return
-				
-		if dx > 0.0:
-			var next_right_x = right_x + dx * dt * 60.0
-			if next_right_x >= px and right_x < px + 15.0 * scaling_factor \
-					and rect.position.y < py + ph - 5.0 * scaling_factor \
-					and rect.end.y > py + 10.0 * scaling_factor:
-				# Hit right wall
-				var bc: float = ae["skill"].bounce_coefficient
-				if bc > 0.0:
-					ae["dx"] = -abs(ae["dx"]) * bc
-					ae["rect"] = Rect2(px - rect.size.x - 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
-					ae["facing"] = -ae["facing"]
-				else:
-					ae["dx"] = 0.0
-					ae["rect"] = Rect2(px - rect.size.x - 1.0 * scaling_factor, rect.position.y, rect.size.x, rect.size.y)
-					if ae["skill"].spawn_on_impact:
-						ae["ground_hit"] = true
-					else:
-						ae["t"] = ae["skill"].effect_duration
-				return
 
 
 func _maybe_turnaround_effect(ae: Dictionary, dt: float) -> void:
@@ -1978,7 +1906,7 @@ func _draw() -> void:
 		var sk: Resource = sk_defs[skill_idx]
 		var progress: float = min(1.0, p["cast_t"] / sk.cast_time)
 		var pos: Vector2 = p["pos"]
-		var bx: float = pos.x + SW * 0.5 - 20.0
+		var bx: float = pos.x + (SW * scaling_factor) * 0.5 - 20.0
 		var by: float = pos.y - 14.0
 		draw_rect(Rect2(bx, by, 40.0, 5.0), Color(0.2, 0.2, 0.2, 0.7))
 		draw_rect(Rect2(bx, by, 40.0 * progress, 5.0), Color(1.0, 0.9, 0.2, 0.9))
@@ -2016,9 +1944,9 @@ func _draw() -> void:
 			continue
 		var _sdef: CharacterDef = p["def"]
 		var _sfr := Rect2(
-			p["pos"].x + _sdef.body_offset_x,
-			p["pos"].y + _sdef.body_offset_y + _sdef.body_h - 12.0,
-			_sdef.body_w, 15.0)
+			p["pos"].x + _sdef.body_offset_x * scaling_factor,
+			p["pos"].y + _sdef.body_offset_y * scaling_factor + _sdef.body_h * scaling_factor - 12.0 * scaling_factor,
+			_sdef.body_w * scaling_factor, 15.0 * scaling_factor)
 		draw_rect(_sfr, Color(1.0, 0.35, 0.05, 0.45))
 		draw_rect(_sfr, Color(1.0, 0.7, 0.1, 0.95), false)
 
