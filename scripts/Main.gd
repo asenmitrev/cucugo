@@ -559,11 +559,15 @@ func _process(delta: float) -> void:
 		elif p.get("stunned", false) or p.get("getting_up", false):
 			spr.modulate = Color(1.0, 1.0, 1.0, 1.0)
 			spr.rotation = 0.0
-		elif p.get("invisible", false):
-			spr.modulate = Color(1.0, 1.0, 1.0, 0.1)
-			spr.rotation = 0.0
 		elif p["casting_skill"] >= 0:
-			spr.modulate = Color(1.2, 1.2, 1.5, 1.0)
+			if p.get("invisible", false):
+				spr.modulate = Color(1.0, 1.0, 1.0, 0.0)
+			else:
+				spr.modulate = Color(1.2, 1.2, 1.5, 1.0)
+			spr.rotation = 0.0
+		elif p.get("invisible", false):
+			spr.modulate = Color(1.0, 1.0, 1.0, 0.0)
+			spr.rotation = 0.0
 		else:
 			spr.modulate = Color(1.0, 1.0, 1.0, spr.modulate.a)
 
@@ -807,9 +811,9 @@ func _update_player(i: int, dt: float) -> void:
 								# Track death order
 								if not oi in death_order:
 									death_order.append(oi)
-							if ae["skill"].hit_self_invisible:
+							if ae["skill"].hit_self_invisible and o.get("dead", false):
 								p["invisible"] = true
-								p["invisible_t"] = 4.0
+								p["invisible_t"] = 60.0
 						break
 
 		var csk = ae["child_skill"]
@@ -1903,7 +1907,7 @@ func _draw() -> void:
 	for i in range(4):
 		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
-		if p.empty() or p["casting_skill"] < 0:
+		if p.empty() or p["casting_skill"] < 0 or p.get("invisible", false):
 			continue
 		var skill_idx: int = p["casting_skill"]
 		var sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
@@ -1919,7 +1923,7 @@ func _draw() -> void:
 	for i in range(4):
 		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
-		if p.empty() or p["dead"] or p.get("stunned", false) or p.get("getting_up", false):
+		if p.empty() or p["dead"] or p.get("stunned", false) or p.get("getting_up", false) or p.get("invisible", false):
 			continue
 		var pos: Vector2 = p["pos"]
 		var sk_defs: Array = [p["def"].skill1, p["def"].skill2, p["def"].skill3]
@@ -1944,7 +1948,7 @@ func _draw() -> void:
 	for i in range(4):
 		if not p_active[i]: continue
 		var p: Dictionary = pl[i]
-		if p.empty() or not p.get("stomp_active", false) or p["vel"].y <= 0.0:
+		if p.empty() or not p.get("stomp_active", false) or p["vel"].y <= 0.0 or p.get("invisible", false):
 			continue
 		var _sdef: CharacterDef = p["def"]
 		var _sfr := Rect2(

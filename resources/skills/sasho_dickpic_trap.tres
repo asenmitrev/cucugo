@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Dickpic Trap"
 cast_time = 0.3
-cooldown = 3.0
+cooldown = 2.0
 anim_cast = 0.12
 cast_anim = "punch"
 effect_width = 60.0
