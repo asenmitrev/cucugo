@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Quick Strike"
 cast_time = 0.28
-cooldown = 1.0
+cooldown = 0.5
 anim_cast = 0.08
 cast_anim = "punch"
 effect_width = 25.0

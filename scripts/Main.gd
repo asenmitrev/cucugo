@@ -756,7 +756,7 @@ func _update_player(i: int, dt: float) -> void:
 				print("DEBUG: ", skill_name, " pos update: old=(", old_pos.x, ",", old_pos.y, "), new=(", ae["rect"].position.x, ",", ae["rect"].position.y, "), dx=", ae["dx"], ", dt=", dt, ", move_x=", move_x, ", vy=", ae["vy"], ", scaling_factor=", scaling_factor)
 		if ae["skill"].effect_gravity > 0.0 or ae["skill"].hit_walls_both_ways:
 			if ae["vy"] >= 0.0 or ae["skill"].hit_walls_both_ways:
-				_collide_effect_plats(ae)
+				_collide_effect_plats(ae, dt)
 		ae["rotation"] += ae["rotation_speed"] * dt
 		if ae["skill"].effect_turnaround:
 			_maybe_turnaround_effect(ae, dt)
@@ -1336,11 +1336,15 @@ func _collide_plats(p: Dictionary, dt: float = 0.016) -> void:
 			p["on_right_wall"] = true
 
 
-func _collide_effect_plats(ae: Dictionary) -> void:
+func _collide_effect_plats(ae: Dictionary, dt: float) -> void:
 	var rect: Rect2 = ae["rect"]
 	var plats: Array = active_level._get_platforms()
 	# Get scaling factor from the effect (should be stored when effect was created)
 	var scaling_factor: float = ae.get("scaling_factor", 1.0)
+	
+	# Calculate previous vertical position to prevent tunneling at high speeds
+	var prev_bottom: float = rect.end.y - ae["vy"] * dt
+	var prev_top: float = rect.position.y - ae["vy"] * dt
 	
 	for plat in plats:
 		# Convert platform coordinates from level to screen space
@@ -1356,12 +1360,12 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 		if rect.position.x < px + pw - 10.0 * scaling_factor \
 				and rect.end.x > px + 10.0 * scaling_factor \
 				and bottom >= py \
-				and bottom <= py + 40.0 * scaling_factor \
+				and prev_bottom <= py + 10.0 * scaling_factor \
 				and ae["vy"] >= 0.0:
 			ae["rect"] = Rect2(rect.position.x, py - rect.size.y, rect.size.x, rect.size.y)
 			var bc: float = ae["skill"].bounce_coefficient
 			if bc > 0.0:
-				ae["vy"] = -abs(ae["vy"]) * bc
+				ae["vy"] = clamp(-abs(ae["vy"]) * bc, -2500.0, 2500.0)
 			else:
 				ae["vy"] = 0.0
 			if ae["skill"].spawn_on_impact:
@@ -1371,12 +1375,12 @@ func _collide_effect_plats(ae: Dictionary) -> void:
 				and rect.position.x < px + pw - 10.0 * scaling_factor \
 				and rect.end.x > px + 10.0 * scaling_factor \
 				and top <= py + ph \
-				and top >= py + ph - 40.0 * scaling_factor \
+				and prev_top >= py + ph - 10.0 * scaling_factor \
 				and ae["vy"] < 0.0:
 			ae["rect"] = Rect2(rect.position.x, py + ph, rect.size.x, rect.size.y)
 			var bc: float = ae["skill"].bounce_coefficient
 			if bc > 0.0:
-				ae["vy"] = abs(ae["vy"]) * bc
+				ae["vy"] = clamp(abs(ae["vy"]) * bc, -2500.0, 2500.0)
 			else:
 				ae["vy"] = 0.0
 			if ae["skill"].spawn_on_impact:
