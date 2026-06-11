@@ -2,21 +2,21 @@
 
 [ext_resource path="res://scripts/CharacterDef.gd" type="Script" id=1]
 [ext_resource path="res://resources/skills/itso5q_transform.tres" type="Resource" id=2]
-[ext_resource path="res://resources/skills/itso_beer_toss.tres" type="Resource" id=3]
-[ext_resource path="res://resources/skills/itso_stumble_charge.tres" type="Resource" id=4]
+[ext_resource path="res://resources/skills/5q_lucky_draw.tres" type="Resource" id=3]
+[ext_resource path="res://resources/skills/5q_jackpot_burst.tres" type="Resource" id=4]
 [ext_resource path="res://resources/5q_alt.tres" type="Resource" id=5]
 
 [resource]
 script = ExtResource( 1 )
-display_name = "ITSO & 5Q"
-char_name = "itso"
-label_color = Color( 1, 0.85, 0.2, 1 )
-speed = 190.0
-jump_vel = -500.0
+display_name = "5Q & ITSO"
+char_name = "5q"
+label_color = Color( 0.85, 0.5, 1, 1 )
+speed = 215.0
+jump_vel = -520.0
 walk_cd_rate = 1.0
-body_w = 42.0
+body_w = 38.0
 body_h = 80.0
-body_offset_x = 19.0
+body_offset_x = 21.0
 body_offset_y = 4.0
 anim_idle = 0.18
 anim_walk = 0.1
