@@ -254,10 +254,13 @@ func _ctrl_remap(ev: InputEvent) -> void:
 
 
 func _ctrl_reset_defaults() -> void:
-	for action in DEFAULT_BINDS:
-		var ev := InputEventKey.new()
-		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev, -1)
+	# Clear all current bindings from InputMap
+	for action in _ctrl_bindings.keys():
+		for ev in _ctrl_bindings[action]:
+			InputMap.action_erase_event(action, ev)
+	_ctrl_bindings.clear()
+	
+	_setup_default_controls()
 	_ctrl_save()
 
 
@@ -278,10 +281,10 @@ func _setup_default_controls() -> void:
 			InputMap.action_erase_events(action)
 		var ev := InputEventKey.new()
 		ev.scancode = DEFAULT_BINDS[action]
-		_apply_event_to_action(action, ev, -1)
-
-
-
+		InputMap.action_add_event(action, ev)
+		if not _ctrl_bindings.has(action):
+			_ctrl_bindings[action] = []
+		_ctrl_bindings[action].append(ev)
 
 	var axis_mappings := [
 		["p1_left",  0, JOY_AXIS_0, -1.0],
@@ -303,6 +306,9 @@ func _setup_default_controls() -> void:
 		ev.axis = m[2]
 		ev.axis_value = m[3]
 		InputMap.action_add_event(m[0], ev)
+		if not _ctrl_bindings.has(m[0]):
+			_ctrl_bindings[m[0]] = []
+		_ctrl_bindings[m[0]].append(ev)
 
 
 func _input_map_has_action(aname: String) -> bool:

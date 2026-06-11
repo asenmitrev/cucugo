@@ -6,14 +6,14 @@
 script = ExtResource( 1 )
 display_name = "Basketball Toss"
 cast_time = 0.1
-cooldown = 0.8
+cooldown = 3.0
 anim_cast = 0.07
 cast_anim = "punch"
 effect_width = 24.0
 effect_height = 24.0
 effect_offset_x = 65.0
 effect_offset_y = 20.0
-effect_duration = 1.4
+effect_duration = 1.0
 effect_color = Color( 1, 1, 1, 1 )
 effect_sprite_path = "res://assets/yavor/basketball.png"
 effect_dx = 450.0
