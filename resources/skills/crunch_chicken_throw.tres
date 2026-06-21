@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Chicken Throw"
 cast_time = 0.35
-cooldown = 30.0
+cooldown = 25.0
 anim_cast = 0.12
 cast_anim = "punch"
 effect_width = 50.0

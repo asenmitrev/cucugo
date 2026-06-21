@@ -6,7 +6,7 @@
 script = ExtResource( 1 )
 display_name = "Jackpot Burst"
 cast_time = 0.35
-cooldown = 55.0
+cooldown = 50.0
 anim_cast = 0.12
 cast_anim = "punch"
 effect_width = 50.0
