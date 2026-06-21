@@ -186,11 +186,22 @@ const RESTART_DELAY := 1.0
 var current_round: int = 1
 const TOTAL_ROUNDS: int = 9
 var show_highscore_screen: bool = false
+var show_buff_screen: bool = false
 var player_scores: Array = [0, 0, 0, 0]
 var player_kills: Array = [0, 0, 0, 0]
 var player_coins: Array = [0, 0, 0, 0]  # Coins collected by each player
 var death_order: Array = []
 var round_winner: int = -1
+
+# Buff system
+var cd_modifiers: Array = [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+var player_buff_ready: Array = [false, false, false, false]
+var buff_selections: Array = [[], [], [], []]
+var available_buffs: Array = [
+	{"id": "cd1", "name": "Reduce CD Skill 1", "desc": "Lowers cooldown of Skill 1"},
+	{"id": "cd2", "name": "Reduce CD Skill 2", "desc": "Lowers cooldown of Skill 2"},
+	{"id": "cd3", "name": "Reduce CD Skill 3", "desc": "Lowers cooldown of Skill 3"}
+]
 
 var font: Font
 
@@ -354,9 +365,11 @@ func _ready() -> void:
 	# Initialize tournament state
 	current_round = 1
 	show_highscore_screen = false
+	show_buff_screen = false
 	for i in range(4):
 		player_scores[i] = 0
 		player_kills[i] = 0
+		cd_modifiers[i] = [1.0, 1.0, 1.0]
 	death_order.clear()
 	round_winner = -1
 	
@@ -460,7 +473,32 @@ func _process(delta: float) -> void:
 		_level_flash_t = max(0.0, _level_flash_t - dt)
 
 	if game_over:
-		if show_highscore_screen:
+		if show_buff_screen:
+			var all_ready = true
+			for i in range(4):
+				if p_active[i] and not player_buff_ready[i]:
+					var p = pl[i]
+					if p.empty(): continue
+					
+					if Input.is_action_just_pressed(p["action_skill1"]):
+						_apply_buff(i, buff_selections[i][0]["id"])
+						player_buff_ready[i] = true
+					elif Input.is_action_just_pressed(p["action_skill2"]):
+						_apply_buff(i, buff_selections[i][1]["id"])
+						player_buff_ready[i] = true
+					elif Input.is_action_just_pressed(p["action_skill3"]):
+						_apply_buff(i, buff_selections[i][2]["id"])
+						player_buff_ready[i] = true
+					
+					if not player_buff_ready[i]:
+						all_ready = false
+			
+			if all_ready:
+				_start_next_round_after_buffs()
+			
+			update()
+			return
+		elif show_highscore_screen:
 			# Highscore screen is shown, wait for input to continue
 			restart_t += dt
 			# Check for Enter press to go to next round
@@ -789,7 +827,7 @@ func _update_player(i: int, dt: float) -> void:
 							var oskills: Array = [o["def"].skill1, o["def"].skill2, o["def"].skill3]
 							for k in 3:
 								if oskills[k] != null:
-									o["skill_cds"][k] = oskills[k].cooldown
+									o["skill_cds"][k] = oskills[k].cooldown * cd_modifiers[oi][k]
 						if ae["skill"].hit_kills:
 							var dir: float = 1.0 if p["right"] else -1.0
 							if o["lives"] > 1:
@@ -877,7 +915,7 @@ func _update_player(i: int, dt: float) -> void:
 			else:
 				_phx = p["pos"].x + (SW * scaling_factor) - _psk.effect_offset_x * scaling_factor - _psk.effect_width * scaling_factor
 			p["active_effects"].append(_make_effect_dict(_psk, Vector2(_phx, p["pos"].y + _psk.effect_offset_y * scaling_factor), 1.0 if p["right"] else -1.0, scaling_factor))
-			p["skill_cds"][k] = _psk.cooldown
+			p["skill_cds"][k] = _psk.cooldown * cd_modifiers[i][k]
 
 	if p["casting_skill"] < 0:
 		var skill_actions: Array = [p["action_skill1"], p["action_skill2"], p["action_skill3"]]
@@ -1029,7 +1067,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["tex"] = _load_tex(next_def.char_name)
 		p["skill_cds"][1] = 0.0
 		p["skill_cds"][2] = 0.0
-		p["skill_cds"][skill_idx] = sk.cooldown
+		p["skill_cds"][skill_idx] = sk.cooldown * cd_modifiers[i][skill_idx]
 		var lbl: Label = _lbl_p[i]
 		if lbl != null:
 			lbl.text = next_def.display_name
@@ -1064,7 +1102,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 			var player_left_bound = level_left_screen - def.body_offset_x * scaling_factor
 			var player_right_bound = level_right_screen - def.body_offset_x * scaling_factor - def.body_w * scaling_factor
 			p["pos"].x = clamp(p["pos"].x, player_left_bound, player_right_bound)
-		p["skill_cds"][skill_idx] = sk.cooldown
+		p["skill_cds"][skill_idx] = sk.cooldown * cd_modifiers[i][skill_idx]
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
 		return
@@ -1088,7 +1126,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 		p["pos"].y = screen_pos.y - def.body_h * scaling_factor - def.body_offset_y * scaling_factor
 		p["vel"] = Vector2.ZERO
 		p["right"] = randf() > 0.5
-		p["skill_cds"][skill_idx] = sk.cooldown
+		p["skill_cds"][skill_idx] = sk.cooldown * cd_modifiers[i][skill_idx]
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
 		return
@@ -1096,7 +1134,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	if sk.is_stomp:
 		p["vel"].y = sk.player_launch_y
 		p["stomp_active"] = true
-		p["skill_cds"][skill_idx] = sk.cooldown
+		p["skill_cds"][skill_idx] = sk.cooldown * cd_modifiers[i][skill_idx]
 		p["casting_skill"] = -1
 		p["cast_t"] = 0.0
 		return
@@ -1113,7 +1151,7 @@ func _activate_skill(p: Dictionary, i: int, skill_idx: int, sk: Resource) -> voi
 	p["active_effects"].append(_make_effect_dict(sk, Vector2(hx, hy), dir, scaling_factor))
 	if sk.spawn_behind_trap:
 		_spawn_lottery_trap(p, sk, i)
-	p["skill_cds"][skill_idx] = sk.cooldown
+	p["skill_cds"][skill_idx] = sk.cooldown * cd_modifiers[i][skill_idx]
 	p["casting_skill"] = -1
 	p["cast_t"] = 0.0
 	if sk.self_cd_reduce_on_cast > 0.0:
@@ -1614,15 +1652,59 @@ func _go_to_next_round() -> void:
 		# Game over, show final results
 		_show_final_results()
 	else:
-		# Reset for next round
-		current_round += 1
-		show_highscore_screen = false
-		# Reset kill counts for this round (keep total scores)
-		for i in range(4):
-			player_kills[i] = 0
-		death_order.clear()
-		round_winner = -1
-		_restart_round()
+		_show_buff_selection()
+
+func _show_buff_selection() -> void:
+	show_buff_screen = true
+	show_highscore_screen = false
+	
+	for i in range(4):
+		if p_active[i]:
+			player_buff_ready[i] = false
+			
+			var p_def = pl[i]["def"]
+			var skill1_name = "Skill 1"
+			var skill2_name = "Skill 2"
+			var skill3_name = "Skill 3"
+			
+			if p_def.skill1 != null:
+				skill1_name = p_def.skill1.display_name
+			if p_def.skill2 != null:
+				skill2_name = p_def.skill2.display_name
+			if p_def.skill3 != null:
+				skill3_name = p_def.skill3.display_name
+				
+			# Generate custom buffs based on player's skills
+			var custom_buffs = [
+				{"id": "cd1", "name": "Reduce CD " + skill1_name, "desc": "Lowers cooldown of " + skill1_name},
+				{"id": "cd2", "name": "Reduce CD " + skill2_name, "desc": "Lowers cooldown of " + skill2_name},
+				{"id": "cd3", "name": "Reduce CD " + skill3_name, "desc": "Lowers cooldown of " + skill3_name}
+			]
+			
+			buff_selections[i] = custom_buffs
+		else:
+			player_buff_ready[i] = true
+
+func _apply_buff(player_idx: int, buff_id: String) -> void:
+	if buff_id == "cd1":
+		cd_modifiers[player_idx][0] *= 0.8
+	elif buff_id == "cd2":
+		cd_modifiers[player_idx][1] *= 0.8
+	elif buff_id == "cd3":
+		cd_modifiers[player_idx][2] *= 0.8
+	print("Player ", player_idx, " picked buff ", buff_id)
+
+func _start_next_round_after_buffs() -> void:
+	# Reset for next round
+	current_round += 1
+	show_highscore_screen = false
+	show_buff_screen = false
+	# Reset kill counts for this round (keep total scores)
+	for i in range(4):
+		player_kills[i] = 0
+	death_order.clear()
+	round_winner = -1
+	_restart_round()
 
 
 func _show_final_results() -> void:
@@ -1657,9 +1739,11 @@ func _reset_tournament() -> void:
 	# Reset all tournament state
 	current_round = 1
 	show_highscore_screen = false
+	show_buff_screen = false
 	for i in range(4):
 		player_scores[i] = 0
 		player_kills[i] = 0
+		cd_modifiers[i] = [1.0, 1.0, 1.0]
 	death_order.clear()
 	round_winner = -1
 	game_over = false
@@ -1781,11 +1865,64 @@ func _draw_highscore_screen() -> void:
 	var progress_text = "Round " + str(current_round) + " of " + str(TOTAL_ROUNDS)
 	draw_string(font, Vector2(box_x + box_w * 0.5 - 40.0, left_start_y), progress_text, Color(0.7, 0.7, 1.0))
 
+func _draw_buff_screen() -> void:
+	# Draw semi-transparent background
+	draw_rect(Rect2(0, 0, W, H), Color(0, 0, 0, 0.8))
+	
+	# Title
+	var title = "PICK YOUR BUFF"
+	draw_string(font, Vector2(W * 0.5 - 60.0, 40.0), title, Color.white)
+	
+	var active_count = 0
+	for i in range(4):
+		if p_active[i]:
+			active_count += 1
+			
+	var box_w = 180.0
+	var box_h = 300.0
+	var spacing = 20.0
+	var total_w = active_count * box_w + (active_count - 1) * spacing
+	var start_x = (W - total_w) / 2.0
+	var box_y = 80.0
+	
+	var current_x = start_x
+	for i in range(4):
+		if p_active[i]:
+			# Draw player box
+			var p_col = pl[i]["def"].label_color if pl[i].has("def") else Color.white
+			var p_name = pl[i]["def"].display_name if pl[i].has("def") else "Player " + str(i + 1)
+			
+			if player_buff_ready[i]:
+				draw_rect(Rect2(current_x, box_y, box_w, box_h), Color(0.1, 0.3, 0.1))
+				draw_rect(Rect2(current_x, box_y, box_w, box_h), p_col, false, 2.0)
+				draw_string(font, Vector2(current_x + 10, box_y + 30), p_name + " READY", p_col)
+			else:
+				draw_rect(Rect2(current_x, box_y, box_w, box_h), Color(0.1, 0.1, 0.15))
+				draw_rect(Rect2(current_x, box_y, box_w, box_h), p_col, false, 2.0)
+				draw_string(font, Vector2(current_x + 10, box_y + 30), p_name, p_col)
+				
+				# Draw buffs
+				var buffs = buff_selections[i]
+				var action_names = ["Skill 1", "Skill 2", "Skill 3"]
+				for j in range(buffs.size()):
+					var buff = buffs[j]
+					var buff_y = box_y + 70 + j * 70
+					draw_rect(Rect2(current_x + 10, buff_y, box_w - 20, 60), Color(0.2, 0.2, 0.3))
+					draw_string(font, Vector2(current_x + 15, buff_y + 20), buff["name"], Color.yellow)
+					draw_string(font, Vector2(current_x + 15, buff_y + 45), "Press " + action_names[j], Color(0.7, 0.7, 0.7))
+			
+			current_x += box_w + spacing
+
 
 func _draw() -> void:
 	# Draw highscore screen if active
 	if show_highscore_screen:
 		_draw_highscore_screen()
+		return
+
+	# Draw buff screen if active
+	if show_buff_screen:
+		_draw_buff_screen()
 		return
 	
 	var lev: Resource = active_level
@@ -1937,7 +2074,7 @@ func _draw() -> void:
 			draw_circle(dot_center, 4.0, dot_col)
 			if not ready:
 				var skill_ref: SkillDef = sk_defs[k]
-				var max_cd: float = skill_ref.cooldown
+				var max_cd: float = skill_ref.cooldown * cd_modifiers[i][k]
 				if max_cd > 0.0:
 					var ratio: float = p["skill_cds"][k] / max_cd
 					var filled_angle: float = (1.0 - ratio) * TAU
