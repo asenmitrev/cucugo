@@ -195,6 +195,7 @@ var round_winner: int = -1
 
 # Buff system
 var cd_modifiers: Array = [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+var skill_levels: Array = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
 var player_buff_ready: Array = [false, false, false, false]
 var buff_selections: Array = [[], [], [], []]
 var available_buffs: Array = [
@@ -370,6 +371,7 @@ func _ready() -> void:
 		player_scores[i] = 0
 		player_kills[i] = 0
 		cd_modifiers[i] = [1.0, 1.0, 1.0]
+		skill_levels[i] = [0, 0, 0]
 	death_order.clear()
 	round_winner = -1
 	
@@ -1688,10 +1690,13 @@ func _show_buff_selection() -> void:
 func _apply_buff(player_idx: int, buff_id: String) -> void:
 	if buff_id == "cd1":
 		cd_modifiers[player_idx][0] *= 0.8
+		skill_levels[player_idx][0] += 1
 	elif buff_id == "cd2":
 		cd_modifiers[player_idx][1] *= 0.8
+		skill_levels[player_idx][1] += 1
 	elif buff_id == "cd3":
 		cd_modifiers[player_idx][2] *= 0.8
+		skill_levels[player_idx][2] += 1
 	print("Player ", player_idx, " picked buff ", buff_id)
 
 func _start_next_round_after_buffs() -> void:
@@ -1744,6 +1749,7 @@ func _reset_tournament() -> void:
 		player_scores[i] = 0
 		player_kills[i] = 0
 		cd_modifiers[i] = [1.0, 1.0, 1.0]
+		skill_levels[i] = [0, 0, 0]
 	death_order.clear()
 	round_winner = -1
 	game_over = false
@@ -1907,8 +1913,17 @@ func _draw_buff_screen() -> void:
 				for j in range(buffs.size()):
 					var buff = buffs[j]
 					var buff_y = box_y + 70 + j * 70
+					var level = skill_levels[i][j]
+					var level_str = " (Lvl " + str(level) + ")" if level > 0 else ""
+					
 					draw_rect(Rect2(current_x + 10, buff_y, box_w - 20, 60), Color(0.2, 0.2, 0.3))
-					draw_string(font, Vector2(current_x + 15, buff_y + 20), buff["name"], Color.yellow)
+					
+					# Draw buff name with scale
+					var buff_text = buff["name"] + level_str
+					draw_set_transform(Vector2(current_x + 15, buff_y + 20), 0.0, Vector2(0.8, 0.8))
+					draw_string(font, Vector2(0, 0), buff_text, Color.yellow)
+					draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+					
 					draw_string(font, Vector2(current_x + 15, buff_y + 45), "Press " + action_names[j], Color(0.7, 0.7, 0.7))
 			
 			current_x += box_w + spacing
